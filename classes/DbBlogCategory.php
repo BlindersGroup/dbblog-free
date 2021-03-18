@@ -1,0 +1,470 @@
+<?php
+
+class DbBlogCategory extends ObjectModel
+{
+
+    public $id;
+    public $id_shop;
+    public $id_dbblog_category;
+    public $title;
+    public $active = 1;
+    public $index = 1;
+    public $short_desc;
+    public $large_desc;
+    public $link_rewrite;
+    public $meta_title;
+    public $meta_description;
+    public $date_add;
+    public $date_upd;
+    public $position;
+    public $id_parent;
+
+    public static $definition = array(
+        'table' => 'dbblog_category',
+        'primary' => 'id_dbblog_category',
+        'multilang' => true,
+        'multilang_shop' => true,
+        'fields' => array(
+            'active' =>			array('type' => self::TYPE_BOOL, 'validate' => 'isBool', 'required' => true),
+            'position' =>		array('type' => self::TYPE_INT, 'validate' => 'isunsignedInt'),
+            'id_parent' =>		array('type' => self::TYPE_INT, 'validate' => 'isunsignedInt'),
+            'index' =>			array('type' => self::TYPE_BOOL, 'validate' => 'isBool'),
+            'date_add' =>		array('type' => self::TYPE_DATE),
+            'date_upd' =>		array('type' => self::TYPE_DATE),
+            
+            // Lang fields
+            'short_desc' =>	        array('type' => self::TYPE_HTML, 'lang' => true, 'required' => false , 'validate' => 'isCleanHtml', 'size' => 4000),
+            'large_desc' =>	        array('type' => self::TYPE_HTML, 'lang' => true, 'required' => false , 'validate' => 'isCleanHtml'),
+			'title' =>			    array('type' => self::TYPE_STRING, 'lang' => true, 'required' => true , 'validate' => 'isCleanHtml', 'size' => 128),
+            'link_rewrite' =>	    array('type' => self::TYPE_STRING, 'lang' => true, 'required' => false , 'validate' => 'isCleanHtml', 'size' => 128),
+            'meta_title' =>	        array('type' => self::TYPE_STRING, 'lang' => true, 'required' => false , 'validate' => 'isCleanHtml', 'size' => 128),
+            'meta_description' =>	array('type' => self::TYPE_STRING, 'lang' => true, 'required' => false , 'validate' => 'isCleanHtml', 'size' => 255),
+        ),
+    );
+
+    public function __construct($id = null, $idLang = null, $idShop = null)
+    {
+        parent::__construct($id, $idLang, $idShop);
+    }
+
+    public  function add($autodate = true, $null_values = false)
+    {
+        $this->position = DbBlogCategory::getNewLastPosition();
+        $ret = parent::add($autodate, $null_values);
+        return $ret;
+    }
+
+    public static function getNewLastPosition()
+    {
+        return (Db::getInstance()->getValue('
+            SELECT IFNULL(MAX(position),0)+1
+            FROM `'._DB_PREFIX_.'dbblog_category`'
+        ));
+    }
+
+    public static function getCategories($id_lang, $active = true, $parent = 0)
+    {
+        if (!Validate::isBool($active))
+            die(Tools::displayError());
+
+        $id_shop = (int)Context::getContext()->shop->id;
+        
+        $sql = "SELECT * 
+            FROM "._DB_PREFIX_."dbblog_category c 
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl 
+                ON c.id_dbblog_category = cl.id_dbblog_category
+                    AND cl.id_shop = '$id_shop'
+            WHERE cl.id_lang = '$id_lang' 
+            ".($active ? 'AND `active` = 1' : '')."
+            AND id_parent = '$parent'
+            ORDER BY c.position ASC";
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $categories = array();
+
+        foreach ($result as $row)
+        {
+            $categories[$row['id_dbblog_category']]['title'] = $row['title'];
+            $categories[$row['id_dbblog_category']]['url'] = self::getLink($row['link_rewrite'], $id_lang);
+            $categories[$row['id_dbblog_category']]['id'] = $row['id_dbblog_category'];
+            $categories[$row['id_dbblog_category']]['link_rewrite'] = $row['link_rewrite'];
+            $categories[$row['id_dbblog_category']]['is_child'] = $row['id_parent'] > 0 ? true : false;
+            if(sizeof(self::getChildrens($row['id_dbblog_category'])))
+                $categories[$row['id_dbblog_category']]['childrens'] = self::getChildrens($row['id_dbblog_category']);
+        }
+            
+        return $categories;
+    }
+
+    public static function getCategoriesSelected($id_post)
+    {
+        $sql = "SELECT id_dbblog_category
+            FROM "._DB_PREFIX_."dbblog_category_post 
+            WHERE id_dbblog_post = '$id_post'";
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $categories = [];
+        foreach ($result as $row){
+            $categories[] = $row['id_dbblog_category'];
+        }
+            
+        return $categories;
+    }
+
+    public static function getLink($rewrite, $id_lang = null, $id_shop = null)
+    {
+        return Context::getContext()->link->getModuleLink('dbblog', 'dbcategory', array('rewrite' => $rewrite));
+    }
+
+    public static function getChildrens($id_parent)
+    {
+        $id_lang = Context::getContext()->language->id;
+        $id_shop = (int)Context::getContext()->shop->id;
+
+        $child_categories = DB::getInstance()->executeS('
+            SELECT *
+            FROM `'._DB_PREFIX_.'dbblog_category` c
+            INNER JOIN `'._DB_PREFIX_.'dbblog_category_lang` cl
+                ON c.`id_dbblog_category` = cl.`id_dbblog_category` 
+                    AND cl.`id_lang` = '.(int)$id_lang.' AND cl.`id_shop` = '.$id_shop.'
+            WHERE c.`id_parent` = '.(int)$id_parent.' AND c.active = 1
+            ORDER BY c.`position` ASC
+        ');
+
+        return $child_categories;
+    }
+
+    public static function getCategory($rewrite)
+    {
+        $id_lang = Context::getContext()->language->id;
+        $id_shop = (int)Context::getContext()->shop->id;
+
+        $result = DB::getInstance()->executeS('
+            SELECT *
+            FROM `'._DB_PREFIX_.'dbblog_category` c
+            INNER JOIN `'._DB_PREFIX_.'dbblog_category_lang` cl
+                ON c.`id_dbblog_category` = cl.`id_dbblog_category` 
+                    AND cl.`id_lang` = '.(int)$id_lang.' AND cl.`id_shop` = '.$id_shop.'
+            WHERE cl.link_rewrite = "'.$rewrite.'"
+            LIMIT 1
+        ');
+
+        $category = array();
+
+        foreach ($result as $row)
+        {
+            $category['title'] = $row['title'];
+            $category['url'] = self::getLink($row['link_rewrite'], $id_lang);
+            $category['id'] = $row['id_dbblog_category'];
+            $category['short_desc'] = $row['short_desc'];
+            $category['large_desc'] = $row['large_desc'];
+            $category['id_parent'] = $row['id_parent'];
+            $category['meta_title'] = $row['meta_title'];
+            $category['meta_description'] = $row['meta_description'];
+            $category['index'] = $row['index'];
+            $category['active'] = $row['active'];
+        }
+            
+        return $category;
+    }
+
+    public static function getCategoryById($id_category)
+    {
+        $id_lang = Context::getContext()->language->id;
+        $id_shop = (int)Context::getContext()->shop->id;
+
+        $result = DB::getInstance()->executeS('
+            SELECT *
+            FROM `'._DB_PREFIX_.'dbblog_category` c
+            INNER JOIN `'._DB_PREFIX_.'dbblog_category_lang` cl
+                ON c.`id_dbblog_category` = cl.`id_dbblog_category` 
+                    AND cl.`id_lang` = '.(int)$id_lang.' AND cl.`id_shop` = '.$id_shop.'
+            WHERE c.id_dbblog_category = "'.$id_category.'"
+            LIMIT 1
+        ');
+
+        $category = array();
+
+        foreach ($result as $row)
+        {
+            $category['title'] = $row['title'];
+            $category['url'] = self::getLink($row['link_rewrite'], $id_lang);
+            $category['id'] = $row['id_dbblog_category'];
+            $category['short_desc'] = $row['short_desc'];
+            $category['large_desc'] = $row['large_desc'];
+            $category['id_parent'] = $row['id_parent'];
+            $category['meta_title'] = $row['meta_title'];
+            $category['meta_description'] = $row['meta_description'];
+            $category['index'] = $row['index'];
+            $category['active'] = $row['active'];
+        }
+
+        return $category;
+    }
+
+    public static function getPosts($link_rewrite, $id_lang, $page = 0)
+    {
+        $id_shop = (int)Context::getContext()->shop->id;
+        $limit = Configuration::get('DBBLOG_POSTS_PER_PAGE');
+        if($limit == 0){
+            $limit = 10;
+        }
+        $offset = $page * $limit;
+
+        $sql = "SELECT id_dbblog_category FROM "._DB_PREFIX_."dbblog_category_lang WHERE link_rewrite = '$link_rewrite'";
+        $id_category = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+            FROM "._DB_PREFIX_."dbblog_post p
+            INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl 
+                ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl 
+                ON p.id_dbblog_category = cl.id_dbblog_category AND pl.id_lang = '$id_lang' AND cl.id_shop = '$id_shop'
+            LEFT JOIN "._DB_PREFIX_."dbblog_category_post cp ON cp.id_dbblog_post = p.id_dbblog_post 
+            WHERE p.active = 1 AND (p.id_dbblog_category = '$id_category' OR cp.id_dbblog_category = '$id_category')
+            GROUP BY p.id_dbblog_post
+            ORDER BY p.date_add DESC
+            LIMIT ".$offset.",".$limit;
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $posts = array();
+        foreach ($result as $row) {
+            $comments = DbBlogComment::getTotalCommentsByPost($row['id_dbblog_post']);
+            if($comments['total'] == 0){
+                $rating = 0;
+            } else {
+                $rating = round($comments['suma'] * 100 / ($comments['total'] * 5), 0);
+            }
+
+            $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
+            $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
+            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
+            $posts[$row['id_dbblog_post']]['title'] = $row['title'];
+            $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd/m/Y');
+            $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_.'dbblog/views/img/post/'.$row['image'];
+            $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['total_comments'] = $comments['total'];
+            $posts[$row['id_dbblog_post']]['rating'] = $rating;
+        }
+        return $posts;    
+    }
+
+    public static function getPostsById($link_rewrite, $id_lang, $page = 0)
+    {
+        $id_shop = (int)Context::getContext()->shop->id;
+        $limit = Configuration::get('DBBLOG_POSTS_PER_PAGE');
+        $offset = $page * $limit;
+        /*$sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+            FROM "._DB_PREFIX_."dbblog_post p
+            INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang'
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl ON p.id_dbblog_category = cl.id_dbblog_category
+            WHERE p.active = 1 AND cl.link_rewrite = '$link_rewrite'
+            ORDER BY date_upd DESC
+            LIMIT ".$offset.",".$limit;
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);*/
+
+        $sql = "SELECT id_dbblog_category FROM "._DB_PREFIX_."dbblog_category_lang WHERE link_rewrite = '$link_rewrite'";
+        $id_category = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+            FROM "._DB_PREFIX_."dbblog_post p
+            INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl 
+                ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl AND cl.id_lang = '$id_lang' AND cl.id_shop = '$id_shop'
+                ON p.id_dbblog_category = cl.id_dbblog_category
+            LEFT JOIN "._DB_PREFIX_."dbblog_category_post cp ON cp.id_dbblog_post = p.id_dbblog_post 
+            WHERE p.active = 1 AND (p.id_dbblog_category = '$id_category' OR cp.id_dbblog_category = '$id_category')
+            GROUP BY p.id_dbblog_post
+            ORDER BY p.date_add DESC
+            LIMIT ".$offset.",".$limit;
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $posts = array();
+        foreach ($result as $row) {
+            $comments = DbBlogComment::getTotalCommentsByPost($row['id_dbblog_post']);
+            if($comments['total'] == 0){
+                $rating = 0;
+            } else {
+                $rating = round($comments['suma'] * 100 / ($comments['total'] * 5), 1);
+            }
+
+            $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
+            $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
+            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
+            $posts[$row['id_dbblog_post']]['title'] = $row['title'];
+            $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd/m/Y');
+            if(!empty($row['image'])) {
+                $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_ . 'dbblog/views/img/post/' . $row['image'];
+            } else {
+
+            }
+            $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['total_comments'] = $comments['total'];
+            $posts[$row['id_dbblog_post']]['rating'] = $rating;
+        }
+
+        return $posts;    
+    }
+
+    public static function totalPosts($link_rewrite, $id_lang, $active = 1)
+    {
+        $id_shop = (int)Context::getContext()->shop->id;
+        $sql = "SELECT id_dbblog_category 
+                FROM "._DB_PREFIX_."dbblog_category_lang 
+                WHERE link_rewrite = '$link_rewrite' AND id_lang = '$id_lang' AND id_shop = '$id_shop'";
+        $id_category = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        $sql = "SELECT COUNT(DISTINCT p.id_dbblog_post) as total
+            FROM "._DB_PREFIX_."dbblog_post p
+            LEFT JOIN "._DB_PREFIX_."dbblog_category_post cp ON cp.id_dbblog_post = p.id_dbblog_post
+            WHERE p.active = 1 AND (p.id_dbblog_category = '$id_category' OR cp.id_dbblog_category = '$id_category')";
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        return $result;
+            
+    }
+
+    public static function getPostsViews($id_lang, $link_rewrite = NULL, $id_author = NULL, $id_post = NULL, $limit = 4)
+    {
+        $id_shop = (int)Context::getContext()->shop->id;
+        //$limit = 4;
+        $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+            FROM "._DB_PREFIX_."dbblog_post p
+            INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl 
+                ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl 
+                ON p.id_dbblog_category = cl.id_dbblog_category AND cl.id_lang = '$id_lang' AND cl.id_shop = '$id_shop'";
+        $sql .= " WHERE p.active = 1 ";
+        if($link_rewrite != NULL){
+            $sql .= " AND cl.link_rewrite = '$link_rewrite'";
+        }
+        if($id_author != NULL){
+            $sql .= " AND p.author = '$id_author'";
+        }
+        if($id_post != NULL){
+            $sql .= " AND p.id_dbblog_post != '$id_post'";
+        }
+        $sql .= " GROUP BY p.id_dbblog_post
+            ORDER BY views DESC
+            LIMIT ".$limit;
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $posts = array();
+        foreach ($result as $row) {
+            $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
+            $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
+            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
+            $posts[$row['id_dbblog_post']]['title'] = $row['title'];
+            $posts[$row['id_dbblog_post']]['views'] = $row['views'];
+            $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_add']), 'd/m/Y');
+            if(!empty($row['image'])) {
+                $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_ . 'dbblog/views/img/post/' . $row['image'];
+            } else {
+                $posts[$row['id_dbblog_post']]['img'] = '';
+            }
+            $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+        }
+        return $posts;     
+    }
+
+    public static function getPostsLast($id_lang, $link_rewrite = NULL, $id_author = NULL, $id_post = NULL, $limit = 4)
+    {
+        $id_shop = (int)Context::getContext()->shop->id;
+        //$limit = 4;
+        $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+            FROM "._DB_PREFIX_."dbblog_post p
+            INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl 
+                ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbblog_category_lang cl 
+                ON p.id_dbblog_category = cl.id_dbblog_category AND cl.id_lang = '$id_lang' AND cl.id_shop = '$id_shop'";
+        $sql .= " WHERE p.active = 1";
+        if($link_rewrite != NULL){
+            $sql .= " AND cl.link_rewrite = '$link_rewrite'";
+        }
+        if($id_author != NULL){
+            $sql .= " AND p.author = '$id_author'";
+        }
+        if($id_post != NULL){
+            $sql .= " AND p.id_dbblog_post != '$id_post'";
+        }
+        $sql .= " ORDER BY date_add DESC
+            LIMIT ".$limit;
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $posts = array();
+        foreach ($result as $row) {
+            $comments = DbBlogComment::getTotalCommentsByPost($row['id_dbblog_post']);
+            if($comments['total'] == 0){
+                $rating = 0;
+            } else {
+                $rating = round($comments['suma'] * 100 / ($comments['total'] * 5), 1);
+            }
+
+            $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
+            $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
+            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
+            $posts[$row['id_dbblog_post']]['title'] = $row['title'];
+            $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_add']), 'd/m/Y');
+            if(!empty($row['image'])) {
+                $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_ . 'dbblog/views/img/post/' . $row['image'];
+            } else {
+                $posts[$row['id_dbblog_post']]['img'] = '';
+            }
+            $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['total_comments'] = $comments['total'];
+            $posts[$row['id_dbblog_post']]['rating'] = $rating;
+        }
+        return $posts;     
+    }
+
+    public function isToggleStatus($id_category){
+        $sql = "SELECT active FROM "._DB_PREFIX_."dbblog_category WHERE id_dbblog_category = '$id_category'";
+        $status = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        if($status == 0){
+            $active = 1;
+        } else {
+            $active = 0;
+        }
+        $update = "UPDATE "._DB_PREFIX_."dbblog_category SET active = '$active' WHERE id_dbblog_category = '$id_category'";
+        Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
+
+        die(Tools::jsonEncode(
+            array(
+                'status' => true,
+                'message' => 'Actualizado correctamente',
+            )
+        ));
+    }
+
+    public function isToggleIndex($id_category){
+        $sql = "SELECT `index` FROM "._DB_PREFIX_."dbblog_category WHERE id_dbblog_category = '$id_category'";
+        $status = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        if($status == 0){
+            $active = 1;
+        } else {
+            $active = 0;
+        }
+        $update = "UPDATE "._DB_PREFIX_."dbblog_category SET `index` = '$active' WHERE id_dbblog_category = '$id_category'";
+        Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
+
+        die(Tools::jsonEncode(
+            array(
+                'status' => true,
+                'message' => 'Actualizado correctamente',
+            )
+        ));
+    }
+
+}
