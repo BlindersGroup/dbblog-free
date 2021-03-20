@@ -56,7 +56,7 @@ class DbblogDbCategoryModuleFrontController extends ModuleFrontController
 
         // Authors
         //$authors = DbBlogPost::getAuthors($category['id']);
-        $authors = DbBlogPost::getAuthors(0, 0);
+        $authors = DbBlogCategory::getAuthors(0, $category['id']);
 
         // Redes sociales
         $rrss = 0;

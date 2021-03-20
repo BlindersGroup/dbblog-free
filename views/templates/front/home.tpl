@@ -51,6 +51,12 @@
     <div class="row">
         <div id="content-wrapper" class="home_blog_center center-column col-sm-4 col-md-9">
 
+            {if $short_desc|count_characters > 1}
+            <div class="db__short-desc --card-blog">
+                <p>{$short_desc nofilter}</p>
+            </div>
+            {/if}
+
             <div class="dbblog_recent">
                 <h2 class="title">{l s='Últimos posts' mod='dbblog'}</h2>
                 <div class="db__posts posts_theme2">
@@ -59,6 +65,12 @@
                     {/foreach}
                 </div>
             </div>
+
+            {if $large_desc|count_characters > 1}
+            <div class="db__large-desc --card-blog">
+                <p>{$large_desc nofilter}</p>
+            </div>
+            {/if}
 
         </div>
 

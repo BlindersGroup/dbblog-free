@@ -467,4 +467,39 @@ class DbBlogCategory extends ObjectModel
         ));
     }
 
+    public static function getAuthors($limit = 0, $id_category)
+    {
+        $id_lang = Context::getContext()->language->id;
+        $id_shop = (int)Context::getContext()->shop->id;
+        if($limit == 0) {
+            $limit = (int)Configuration::get('DBBLOG_SIDEBAR_AUTHOR');
+        }
+        $sql = "SELECT dbal.name, dba.id_dbaboutus_author, dbal.link_rewrite, dbal.profession
+            FROM "._DB_PREFIX_."dbaboutus_author dba
+            INNER JOIN "._DB_PREFIX_."dbaboutus_author_lang dbal 
+                ON dba.id_dbaboutus_author = dbal.id_dbaboutus_author 
+                    AND dbal.id_lang = '$id_lang' AND dbal.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbblog_post p ON p.author = dba.id_dbaboutus_author
+            LEFT JOIN "._DB_PREFIX_."dbblog_category_post cp ON cp.id_dbblog_post = p.id_dbblog_post 
+            WHERE dba.active = 1 AND p.active = 1 AND (p.id_dbblog_category = '$id_category' OR cp.id_dbblog_category = '$id_category')
+            ORDER BY dbal.name ASC";
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $authors = array();
+        foreach ($result as $key => $row) {
+            if($key > $limit){
+                break;
+            }
+            $sql = "SELECT count(*) as total FROM "._DB_PREFIX_."dbblog_post WHERE author = '".$row['id_dbaboutus_author']."' AND active = 1";
+            $comments_author = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+            $authors[$row['id_dbaboutus_author']]['name'] = $row['name'];
+            $authors[$row['id_dbaboutus_author']]['id'] = $row['id_dbaboutus_author'];
+            $authors[$row['id_dbaboutus_author']]['profession'] = $row['profession'];
+            $authors[$row['id_dbaboutus_author']]['comments_author'] = (int)$comments_author;
+            $authors[$row['id_dbaboutus_author']]['imagen'] = DbBlogPost::getImage($row['id_dbaboutus_author']);
+            $authors[$row['id_dbaboutus_author']]['url'] = DbBlogPost::getLink_author($row['link_rewrite']);
+        }
+        return $authors;
+    }
+
 }

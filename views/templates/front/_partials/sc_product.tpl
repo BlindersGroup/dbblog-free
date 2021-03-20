@@ -6,7 +6,7 @@
 {/if}
 
 {if $type == 'category'}
-    <div class="products row">
+    <div class="products">
         <div id="splide_dbblogproducts" class="splide">
             <div class="splide__track">
                 <div class="splide__list">
@@ -30,17 +30,9 @@
                 breakpoints: {
                     600: {
                         perPage: 2,
-                        padding: {
-                            right: '2rem',
-                        },
-                        arrows: false,
                     },
                     800: {
                         perPage: 2,
-                        padding: {
-                            right: '2rem',
-                        },
-                        arrows: false,
                     },
                     1200: {
                         perPage: 3,

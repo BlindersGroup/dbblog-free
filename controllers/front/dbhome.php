@@ -19,6 +19,10 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
         $title_blog = Configuration::get('DBBLOG_TITLE', $id_lang);
         $categories = DbBlogCategory::getCategories($id_lang, true);
 
+        // Descripciones
+        $short_desc = Configuration::get('DBBLOG_HOME_SHORT_DESC', $id_lang);
+        $large_desc = Configuration::get('DBBLOG_HOME_LARGE_DESC', $id_lang);
+
         // Posts Destacados
         $destacados = DbBlogPost::getPostFeatures($id_lang);
         
@@ -58,6 +62,8 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
             'isAuthor'      => 0,
             'isPost'        => 0,
 
+            'short_desc'    => $short_desc,
+            'large_desc'    => $large_desc,
             'destacados'    => $destacados,
             'path_img_posts' => _MODULE_DIR_.'dbblog/views/img/post/',
             'post_extract'      => $post_extract,

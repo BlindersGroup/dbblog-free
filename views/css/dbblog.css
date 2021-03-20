@@ -301,10 +301,8 @@
     .header__blog .menu .list_category li a,
     .header__blog .menu li .dropdown-toggle {
         margin: 0;
-        font-weight: 700;
         font-size: 1rem;
         line-height: 20px;
-        text-transform: uppercase;
         width: 100%;
         text-align: left;
         white-space: initial;
@@ -366,7 +364,7 @@
     border-radius: 5px 5px 0 0;
 }
 
-#module-dbblog-dbhome .center-column,
+/*#module-dbblog-dbhome .center-column,
 #module-dbblog-dbcategory .center-column,
 #module-dbblog-dbpost .center-column,
 #module-dbblog-dbauthor .center-column,
@@ -374,9 +372,9 @@
     margin-left: -15px;
     padding-left: 0;
     padding-right: 5px;
-}
+}*/
 
-#module-dbblog-dbhome #right-column,
+/*#module-dbblog-dbhome #right-column,
 #module-dbblog-dbcategory #right-column,
 #module-dbblog-dbpost #right-column,
 #module-dbblog-dbauthor #right-column,
@@ -384,7 +382,7 @@
     margin-right: -15px;
     padding-left: 5px;
     padding-right: 0;
-}
+}*/
 
 .dbblog_featured,
 .dbblog_recent {
@@ -392,7 +390,7 @@
 }
 
 .dbblog_recent .title {
-    margin: 10px 10px 0;
+    margin: 10px 0 0 0;
 }
 
 .dbblog_featured .db__posts {
@@ -419,6 +417,7 @@
 .--card-blog .desc_post {
     margin-left: 10px;
     margin-right: 10px;
+    overflow-wrap: anywhere;
 }
 
 .desc_post p {
@@ -429,11 +428,12 @@
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
+    justify-content: space-between;
 }
 
 .posts_theme2 .post {
-    width: calc(50% - 20px);
-    margin: 10px;
+    width: calc(50% - 10px);
+    margin: 10px 0;
     padding-bottom: 10px;
 }
 
@@ -516,27 +516,27 @@
     font-size: 12px;
 }
 
-.destacado_first {
+/*.destacado_first {
     padding: 0 5px 0 0;
-}
+}*/
 
 .destacado_first .db__taxonomy {
     padding-bottom: 10px;
 }
 
-.destacado_list {
+/*.destacado_list {
     padding: 0 0 0 5px;
     width: calc(33.33333% + 10px);
-}
+}*/
 
-.destacado_first .db__posts {
+/*.destacado_first .db__posts {
     margin: 0 10px;
-}
+}*/
 
 .db__short-desc,
 .db__large-desc {
     padding: 10px;
-    margin: 10px;
+    margin: 10px 0;
 }
 
 .db__short-desc {
@@ -554,7 +554,7 @@
 
 @media only screen and (max-width: 1200px) {
     .destacado_first {
-        padding: 0;
+        /*padding: 0;*/
         margin-left: 0;
     }
     .destacado_first .db__posts {
@@ -562,7 +562,7 @@
     }
     .destacado_list {
         width: initial;
-        padding: 0;
+        /*padding: 0;*/
         margin: 0;
     }
     #module-dbblog-dbhome .center-column, 
@@ -571,6 +571,7 @@
     #module-dbblog-dbauthor .center-column, 
     #module-dbblog-dbauthors .center-column {
         margin-left: 0;
+        padding: 0 15px !important;
     }
     .db__short-desc, 
     .db__large-desc,
@@ -588,7 +589,7 @@
     #module-dbblog-dbauthor #right-column, 
     #module-dbblog-dbauthors #right-column {
         margin-right: 0;
-        padding: 0;
+        padding: 0 15px;
     }
     .post__grid .post {
         width: 100%;
@@ -1005,6 +1006,7 @@
     font-size: 14px;
     font-weight: 600;
     padding: 3px 0 5px;
+    overflow-wrap: anywhere;
 }
 
 .post_list_sidebar .title .updated {
@@ -1450,6 +1452,16 @@
     cursor: pointer;
 }
 
+.splide__slide .product-miniature {
+    margin: 0 7px;
+}
+
+.splide__slide .product-miniature .thumbnail-container,
+.splide__slide .product-miniature .product-description,
+.splide__slide .product-miniature .highlighted-informations {
+    max-width: 100%;
+}
+
 @media only screen and (max-width: 1200px) {
     .section_post,
     .list_comments, 
@@ -1459,8 +1471,8 @@
         margin-right: -15px;
     }
     .list_comments, .form_comments, .posts_recommended {
-        margin-right: -15px;
-        margin-left: -15px;
+        margin-right: 0;
+        margin-left: 0;
     }
     .form_comment_post .rating {
         display: block;
@@ -1476,7 +1488,11 @@
     }
     .section_post .large_desc,
     .section_post .post_share{
-        padding: 0 1rem 1rem;
+        padding: 0;
+    }
+    .section_post .large_desc {
+        padding-bottom: 1rem;
+        margin: 0 1rem 1rem;
     }
     .info_post {
         padding-left: 1rem;
@@ -1514,6 +1530,9 @@
     }
     .posts_recommended {
         margin-bottom: 0;
+    }
+    #module-dbblog-dbpost .nav-item .nav-link {
+        padding: 7px 7px;
     }
 }
 

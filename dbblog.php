@@ -74,8 +74,8 @@ class Dbblog extends Module
      */
     public function install()
     {
-        if(!Module::isEnabled('dbaboutus')){
-            $this->_errors[] = $this->l('Debe de tener instalado y activo el modulo dbaboutus');
+	if(!Module::isEnabled('dbaboutus')){
+            $this->_errors[] = $this->l('Debe de tener instalado y activo el módulo dbaboutus y el módulo dbdatatext');
             return false;
         }
         // Settings
@@ -144,7 +144,7 @@ class Dbblog extends Module
 
         $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_category_lang` (
             `id_dbblog_category` int(11) NOT NULL,
-            `id_lang` int(10) NOT NULL,
+            `id_lang` int(11) NOT NULL,
             `id_shop` int(11) NOT NULL,
             `title` varchar(128) NOT NULL,
             `short_desc` varchar(4000) NOT NULL,
@@ -177,7 +177,7 @@ class Dbblog extends Module
 
         $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_post_lang` (
             `id_dbblog_post` int(11) NOT NULL,
-            `id_lang` int(10) NOT NULL,
+            `id_lang` int(11) NOT NULL,
             `id_shop` int(11) NOT NULL,
             `title` varchar(128) NOT NULL,
             `short_desc` varchar(4000) NOT NULL,
@@ -412,10 +412,50 @@ class Dbblog extends Module
                     ),
 
                     array(
+                        'type' => 'textarea',
+                        'name' => 'DBBLOG_HOME_SHORT_DESC',
+                        'label' => $this->l('Descripción corta'),
+                        'desc' => $this->l('Descripción corta en la home del blog'),
+                        'autoload_rte' => true,
+                        'rows' => 5,
+                        'cols' => 40,
+                        'lang'  => true,
+                    ),
+
+                    array(
+                        'type' => 'textarea',
+                        'name' => 'DBBLOG_HOME_LARGE_DESC',
+                        'label' => $this->l('Descripción larga'),
+                        'desc' => $this->l('Descripción larga en la home del blog'),
+                        'autoload_rte' => true,
+                        'rows' => 5,
+                        'cols' => 40,
+                        'lang'  => true,
+                    ),
+
+                    array(
                         'type' => 'color',
                         'name' => 'DBBLOG_COLOR',
                         'label' => $this->l('Color'),
                         'desc' => $this->l('Color general del blog'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POSTS_PER_PAGE',
+                        'label' => $this->l('Nº Posts por categoría'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POSTS_PER_HOME',
+                        'label' => $this->l('Nº Posts en Home'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POSTS_PER_AUTHOR',
+                        'label' => $this->l('Nº Posts en página de autor'),
                     ),
 
                 ),
@@ -463,6 +503,41 @@ class Dbblog extends Module
             ),
         );
 
+        $sidebar_options = array(
+            'form' => array(
+                'legend' => array(
+                'title' => $this->l('Sidebar'),
+                'icon' => 'icon-cogs',
+                ),
+                'input' => array(
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_SIDEBAR_VIEWS',
+                        'label' => $this->l('Nº Posts más vistos'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_SIDEBAR_LAST',
+                        'label' => $this->l('Nº Últimos posts'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_SIDEBAR_AUTHOR',
+                        'label' => $this->l('Nº de autores'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                ),
+            ),
+        );
 
         $list_cms = CMSCore::listCms($this->context->language->id);
         $comment_options = array(
@@ -555,7 +630,132 @@ class Dbblog extends Module
             ),
         );
 
-        return array($general_options, $seo_options, $comment_options);
+        $post_options = array(
+            'form' => array(
+                'legend' => array(
+                'title' => $this->l('Posts'),
+                'icon' => 'icon-cogs',
+                ),
+                'input' => array(
+
+                    array(
+                        'type' => 'switch',
+                        'label' => $this->l('Mostrar extracto listado'),
+                        'name' => 'DBBLOG_POST_EXTRACT',
+                        'is_bool' => true,
+                        'values' => array(
+                            array(
+                                'id' => 'active_on',
+                                'value' => true,
+                                'label' => $this->l('Enabled')
+                            ),
+                            array(
+                                'id' => 'active_off',
+                                'value' => false,
+                                'label' => $this->l('Disabled')
+                            )
+                        ),
+                    ),
+
+                    array(
+                        'type' => 'switch',
+                        'label' => $this->l('Mostrar leer más'),
+                        'name' => 'DBBLOG_POST_READMORE',
+                        'is_bool' => true,
+                        'values' => array(
+                            array(
+                                'id' => 'active_on',
+                                'value' => true,
+                                'label' => $this->l('Enabled')
+                            ),
+                            array(
+                                'id' => 'active_off',
+                                'value' => false,
+                                'label' => $this->l('Disabled')
+                            )
+                        ),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_RELATED',
+                        'label' => $this->l('Nº Post relacionados'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_AUTHOR',
+                        'label' => $this->l('Nº Post del mismo autor'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                ),
+            ),
+        );
+
+        $home_ps_options = array(
+            'form' => array(
+                'legend' => array(
+                'title' => $this->l('Home PrestaShop'),
+                'icon' => 'icon-cogs',
+                ),
+                'input' => array(
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_FEATURED_HOMEPS',
+                        'label' => $this->l('Nº Post destacados'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_VIEWS_HOMEPS',
+                        'label' => $this->l('Nº Post más vistos'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                ),
+            ),
+        );
+
+        $sidebar_ps_options = array(
+            'form' => array(
+                'legend' => array(
+                'title' => $this->l('Sidebar PrestaShop'),
+                'icon' => 'icon-cogs',
+                ),
+                'input' => array(
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_VIEWS_SIDEBARPS',
+                        'label' => $this->l('Nº Post más vistos'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                    array(
+                        'type' => 'text',
+                        'name' => 'DBBLOG_POST_LAST_SIDEBARPS',
+                        'label' => $this->l('Nº Últimos posts'),
+                        'desc' => $this->l('0 para desactivarlos'),
+                    ),
+
+                ),
+                'submit' => array(
+                    'title' => $this->l('Save'),
+                ),
+            ),
+        );
+
+        return array($general_options, $seo_options, $sidebar_options, $comment_options, $post_options, $home_ps_options, $sidebar_ps_options);
 
     }
 
@@ -569,6 +769,8 @@ class Dbblog extends Module
 
         foreach ($languages as $lang){         
             $values['DBBLOG_TITLE'][$lang['id_lang']] = Configuration::get('DBBLOG_TITLE', $lang['id_lang']);
+            $values['DBBLOG_HOME_SHORT_DESC'][$lang['id_lang']] = Configuration::get('DBBLOG_HOME_SHORT_DESC', $lang['id_lang']);
+            $values['DBBLOG_HOME_LARGE_DESC'][$lang['id_lang']] = Configuration::get('DBBLOG_HOME_LARGE_DESC', $lang['id_lang']);
             $values['DBBLOG_SLUG'][$lang['id_lang']] = Configuration::get('DBBLOG_SLUG', $lang['id_lang']);
             $values['DBBLOG_META_TITLE'][$lang['id_lang']] = Configuration::get('DBBLOG_META_TITLE', $lang['id_lang']);
             $values['DBBLOG_META_DESCRIPTION'][$lang['id_lang']] = Configuration::get('DBBLOG_META_DESCRIPTION', $lang['id_lang']);
@@ -576,11 +778,25 @@ class Dbblog extends Module
         }
 
         $values['DBBLOG_COLOR'] = Configuration::get('DBBLOG_COLOR');
+        $values['DBBLOG_POSTS_PER_PAGE'] = Configuration::get('DBBLOG_POSTS_PER_PAGE');
+        $values['DBBLOG_POSTS_PER_HOME'] = Configuration::get('DBBLOG_POSTS_PER_HOME');
+        $values['DBBLOG_POSTS_PER_AUTHOR'] = Configuration::get('DBBLOG_POSTS_PER_AUTHOR');
+        $values['DBBLOG_SIDEBAR_VIEWS'] = Configuration::get('DBBLOG_SIDEBAR_VIEWS');
+        $values['DBBLOG_SIDEBAR_LAST'] = Configuration::get('DBBLOG_SIDEBAR_LAST');
+        $values['DBBLOG_SIDEBAR_AUTHOR'] = Configuration::get('DBBLOG_SIDEBAR_AUTHOR');
         $values['DBBLOG_COMMENTS'] = Configuration::get('DBBLOG_COMMENTS');
         $values['DBBLOG_PRIVACITY'] = Configuration::get('DBBLOG_PRIVACITY');
         $values['DBBLOG_RECAPTCHA_ENABLE'] = Configuration::get('DBBLOG_RECAPTCHA_ENABLE');
         $values['DBBLOG_RECAPTCHA'] = Configuration::get('DBBLOG_RECAPTCHA');
         $values['DBBLOG_RECAPTCHA_PRIVATE'] = Configuration::get('DBBLOG_RECAPTCHA_PRIVATE');
+        $values['DBBLOG_POST_RELATED'] = Configuration::get('DBBLOG_POST_RELATED');
+        $values['DBBLOG_POST_EXTRACT'] = Configuration::get('DBBLOG_POST_EXTRACT');
+        $values['DBBLOG_POST_READMORE'] = Configuration::get('DBBLOG_POST_READMORE');
+        $values['DBBLOG_POST_AUTHOR'] = Configuration::get('DBBLOG_POST_AUTHOR');
+        $values['DBBLOG_POST_FEATURED_HOMEPS'] = Configuration::get('DBBLOG_POST_FEATURED_HOMEPS');
+        $values['DBBLOG_POST_VIEWS_HOMEPS'] = Configuration::get('DBBLOG_POST_VIEWS_HOMEPS');
+        $values['DBBLOG_POST_VIEWS_SIDEBARPS'] = Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
+        $values['DBBLOG_POST_LAST_SIDEBARPS'] = Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
 
         return $values;
     }
@@ -794,7 +1010,144 @@ class Dbblog extends Module
 
     public function shortCodes($desc)
     {
+
+        preg_match_all("/{dbblog_products (.*)}/",
+            $desc,
+            $shortcodes, PREG_PATTERN_ORDER);
+
+        // Valores
+        $variables = [];
+        foreach ($shortcodes[1] as $z => $sc){
+            $valores = explode(' ', $sc);
+            foreach ($valores as $val){
+                list($key, $data) = explode('=', $val);
+                $variables[$z][$key] = $data;
+                if($key == 'id_product'){
+                    $variables[$z]['type'] = 'product';
+                } elseif($key == 'id_category'){
+                    $variables[$z]['type'] = 'category';
+                }
+            }
+        }
+
+        foreach($variables as $key => $val){
+            $replace = '';
+            if($val['type'] == 'product'){
+                $product = $this->getProductSC((int)$val['id_product']);
+                if(is_object($product)) {
+                    $this->smarty->assign(array(
+                        'product' => $product,
+                        'type' => 'product'
+                    ));
+                    $replace = $this->fetch('module:dbblog/views/templates/front/_partials/sc_product.tpl');
+                }
+            } elseif($val['type'] == 'category') {
+                $products = $this->getProductsSC((int)$val['id_category'], $val['order'], $val['way'], (int)$val['num']);
+                if(is_array($products)) {
+                    $this->smarty->assign(array(
+                        'products' => $products,
+                        'type' => 'category'
+                    ));
+                    $replace = $this->fetch('module:dbblog/views/templates/front/_partials/sc_product.tpl');
+                }
+            }
+            $string_replace = $shortcodes[0][$key];
+
+            $desc = str_replace($string_replace, $replace, $desc);
+        }
+
         return $desc;
+    }
+
+    public function getProductSC($id_product)
+    {
+        $product = new Product($id_product, null, $this->context->language->id);
+        if(!empty($product->link_rewrite) && $product->link_rewrite != '') {
+            $product = array(
+                'id_product' => $id_product,
+            );
+            $assembler = new ProductAssembler($this->context);
+
+            $presenterFactory = new ProductPresenterFactory($this->context);
+            $presentationSettings = $presenterFactory->getPresentationSettings();
+            $presenter = new ProductListingPresenter(
+                new ImageRetriever(
+                    $this->context->link
+                ),
+                $this->context->link,
+                new PriceFormatter(),
+                new ProductColorsRetriever(),
+                $this->context->getTranslator()
+            );
+
+            $product_for_template = $presenter->present(
+                $presentationSettings,
+                $assembler->assembleProduct($product),
+                $this->context->language
+            );
+
+            return $product_for_template;
+        }
+
+        return;
+    }
+
+    public function getProductsSC($id_category = null, $orderby = null, $way = null, $num = null)
+    {
+        $id_lang = $this->context->language->id;
+        $category = new Category($id_category, $id_lang);
+        if($orderby != 'seller' && $orderby != 'id_product' && $orderby != 'date_add' && $orderby != 'date_upd' && $orderby != 'name'
+            && $orderby != 'manufacturer' && $orderby != 'position' && $orderby != 'price'){
+            $orderby = 'seller';
+        }
+        if($way != 'asc' && $way != 'desc'){
+            $way = 'DESC';
+        }
+        if($num < 1){ $num = 4; }
+        if(!empty($category->link_rewrite) && $category->link_rewrite != '') {
+            if($orderby == 'seller'){
+                $products = $this->getProductsSeller($id_category, $way, $num);
+            } else {
+                $products = $category->getProducts($id_lang, 1, $num, $orderby);
+            }
+
+            $products_for_template = [];
+            $assembler = new ProductAssembler($this->context);
+            $presenterFactory = new ProductPresenterFactory($this->context);
+            $presentationSettings = $presenterFactory->getPresentationSettings();
+            $presenter = new ProductListingPresenter(new ImageRetriever($this->context->link), $this->context->link, new PriceFormatter(), new ProductColorsRetriever(), $this->context->getTranslator());
+            foreach ($products as $rawProduct)
+            {
+                $products_for_template[] = $presenter->present(
+                    $presentationSettings,
+                    $assembler->assembleProduct($rawProduct),
+                    $this->context->language
+                );
+            }
+
+            return $products_for_template;
+        }
+    }
+
+    public function getProductsSeller($id_category, $way = null, $num = null)
+    {
+        if($way == null){ $way = DESC; }
+        $sql = "SELECT sp.id_product 
+                    FROM "._DB_PREFIX_."specific_price sp
+                    LEFT JOIN "._DB_PREFIX_."category_product pp
+                        ON sp.id_product = pp.id_product
+                    LEFT JOIN "._DB_PREFIX_."stock_available sa
+                        ON sp.id_product = sa.id_product
+                    LEFT JOIN "._DB_PREFIX_."product p
+                        ON pp.id_product = p.id_product
+                    WHERE pp.id_category = '$id_category' AND p.active = 1 AND sa.id_product_attribute = 0
+                    GROUP BY p.id_product
+                    HAVING SUM(sa.quantity) > 0
+                    ORDER BY sp.reduction ".$way."
+                    LIMIT ".$num;
+        $products = Db::getInstance()->ExecuteS($sql);
+
+        return $products;
     }
 
 }
