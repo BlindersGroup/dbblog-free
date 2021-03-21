@@ -122,6 +122,8 @@ class DbblogDbPostModuleFrontController extends ModuleFrontController
             'path_img'      => _MODULE_DIR_.'dbblog/views/img/',
             'more_views'    => $more_views,
             'last_posts'    => $last_posts,
+
+            'premium'       => $this->module->premium,
         ));
 
         $this->setTemplate('module:dbblog/views/templates/front/post.tpl');

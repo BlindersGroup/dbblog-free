@@ -6,7 +6,7 @@
         <span class="db_title_h3 name__post">{$post.title}</span>
     </a>
     <span class="db__taxonomy">
-        <span class="author"><a href="{$post.author.url}">{$post.author.name}</a></span> | <span>{$post.date}</span> | <span><a href="{$post.url_category}">{$post.title_category}</a></span> | <span>{$post.total_comments} <img class="icon_msg" src="/modules/dbblog/views/img/icons/message.svg" alt="{l s='Comentarios' mod='dbblog'}"></span> 
+        <span class="author"><a href="{$post.author.url}">{$post.author.name}</a></span> | <span>{$post.date}</span> | <span><a href="{$post.url_category}">{$post.title_category}</a></span> | <span>{if isset($post.total_comments)}{$post.total_comments}{else}0{/if} <img class="icon_msg" src="/modules/dbblog/views/img/icons/message.svg" alt="{l s='Comentarios' mod='dbblog'}"></span>
     </span>
     {*<div class="stars">
         <div class="total">

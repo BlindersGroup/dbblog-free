@@ -70,17 +70,6 @@ class AdminDbBlogPostController extends ModuleAdminController
                 'search' => true,
                 'width' => 25,
             ),
-            'index' => array(
-                'title' => 'Index',
-                'active' => 'index',
-                'type' => 'bool',
-                'class' => 'fixed-width-xs',
-                'align' => 'center',
-                'ajax' => true,
-                'orderby' => false,
-                'search' => true,
-                'width' => 25,
-            ),
             'active' => array(
                 'title' => 'Activo',
                 'active' => 'status',
@@ -93,6 +82,11 @@ class AdminDbBlogPostController extends ModuleAdminController
                 'width' => 25,
             ),
         );
+
+        if($this->module->premium == 1) {
+            $this->fields_list['index'] = DbBlogPremium::renderListProduct();
+        }
+
         $this->bulk_actions = array(
             'delete' => array(
                 'text' => $this->l('Delete selected'),
@@ -325,25 +319,6 @@ class AdminDbBlogPostController extends ModuleAdminController
 
                 array(
                     'type' => 'switch',
-                    'label' => $this->trans('Index', array(), 'Admin.Global'),
-                    'name' => 'index',
-                    'is_bool' => true,
-                    'values' => array(
-                        array(
-                            'id' => 'active_on',
-                            'value' => 1,
-                            'label' => $this->trans('Yes', array(), 'Admin.Global')
-                        ),
-                        array(
-                            'id' => 'active_off',
-                            'value' => 0,
-                            'label' => $this->trans('No', array(), 'Admin.Global')
-                        )
-                    ),
-                ),
-                
-                array(
-                    'type' => 'switch',
                     'label' => $this->trans('Active', array(), 'Admin.Global'),
                     'name' => 'active',
                     'is_bool' => true,
@@ -363,6 +338,10 @@ class AdminDbBlogPostController extends ModuleAdminController
                 
             ),
         );
+
+        if($this->module->premium == 1) {
+            $this->fields_form['input'][] = DbBlogPremium::renderFormProduct();
+        }
 
 
         $this->fields_form['submit'] = array(

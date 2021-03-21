@@ -59,7 +59,9 @@
         "commentCount": {$post.comments.total},
         "creator": "{$post.author.name}",
         "dateCreated": "{$post.date_add_json}",
-        "dateModified": "{$post.date_upd_json}",
+        {if $premium == 1}
+            "dateModified": "{$post.date_upd_json}",
+        {/if}
         "datePublished": "{$post.date_add_json}",
         "inLanguage": "es", 
         "image": "{$baseurl}{$post.img}",
@@ -141,7 +143,7 @@
                             <div class="info_author">
                                 <a href="{$post.author.url}">{$post.author.name}</a> | <span class="profession">{$post.author.profession}</span>
                             </div>
-                            <span class="date_publish hide_mobile">{$post.date_add} | {l s='Actualizado:' mod='dbblog'} {$post.date_upd}</span>
+                            <span class="date_publish hide_mobile">{$post.date_add} {if $premium == 1}| {l s='Actualizado:' mod='dbblog'} {$post.date_upd}{/if}</span>
                             <span class="date_publish hide_desktop">{$post.date_add}</span>
                         </div>
                         <div class="info_down">

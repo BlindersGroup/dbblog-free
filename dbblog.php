@@ -45,6 +45,13 @@ class Dbblog extends Module
         require_once(dirname(__FILE__).'/classes/DbBlogPost.php');
         require_once(dirname(__FILE__).'/classes/DbBlogComment.php');
 
+        if(file_exists(dirname(__FILE__).'/premium/DbPremium.php')){
+            require_once(dirname(__FILE__).'/premium/DbPremium.php');
+            $this->premium = 1;
+        } else {
+            $this->premium = 0;
+        }
+
         $this->name = 'dbblog';
         $this->tab = 'front_office_features';
         $this->version = '1.2.0';
@@ -395,6 +402,10 @@ class Dbblog extends Module
      */
     protected function getConfigForm()
     {
+        if($this->premium == 1){
+            return DbBlogPremium::getConfigForm();
+        }
+
         $general_options = array(
             'form' => array(
                 'legend' => array(
@@ -412,50 +423,10 @@ class Dbblog extends Module
                     ),
 
                     array(
-                        'type' => 'textarea',
-                        'name' => 'DBBLOG_HOME_SHORT_DESC',
-                        'label' => $this->l('Descripción corta'),
-                        'desc' => $this->l('Descripción corta en la home del blog'),
-                        'autoload_rte' => true,
-                        'rows' => 5,
-                        'cols' => 40,
-                        'lang'  => true,
-                    ),
-
-                    array(
-                        'type' => 'textarea',
-                        'name' => 'DBBLOG_HOME_LARGE_DESC',
-                        'label' => $this->l('Descripción larga'),
-                        'desc' => $this->l('Descripción larga en la home del blog'),
-                        'autoload_rte' => true,
-                        'rows' => 5,
-                        'cols' => 40,
-                        'lang'  => true,
-                    ),
-
-                    array(
                         'type' => 'color',
                         'name' => 'DBBLOG_COLOR',
                         'label' => $this->l('Color'),
                         'desc' => $this->l('Color general del blog'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POSTS_PER_PAGE',
-                        'label' => $this->l('Nº Posts por categoría'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POSTS_PER_HOME',
-                        'label' => $this->l('Nº Posts en Home'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POSTS_PER_AUTHOR',
-                        'label' => $this->l('Nº Posts en página de autor'),
                     ),
 
                 ),
@@ -494,42 +465,6 @@ class Dbblog extends Module
                         'label' => $this->l('Meta Description Blog'),
                         'desc' => $this->l('La metadescription del blog'),
                         'lang'  => true,
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        $sidebar_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Sidebar'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_SIDEBAR_VIEWS',
-                        'label' => $this->l('Nº Posts más vistos'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_SIDEBAR_LAST',
-                        'label' => $this->l('Nº Últimos posts'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_SIDEBAR_AUTHOR',
-                        'label' => $this->l('Nº de autores'),
-                        'desc' => $this->l('0 para desactivarlos'),
                     ),
 
                 ),
@@ -630,132 +565,8 @@ class Dbblog extends Module
             ),
         );
 
-        $post_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Posts'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
 
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Mostrar extracto listado'),
-                        'name' => 'DBBLOG_POST_EXTRACT',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Mostrar leer más'),
-                        'name' => 'DBBLOG_POST_READMORE',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_RELATED',
-                        'label' => $this->l('Nº Post relacionados'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_AUTHOR',
-                        'label' => $this->l('Nº Post del mismo autor'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        $home_ps_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Home PrestaShop'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_FEATURED_HOMEPS',
-                        'label' => $this->l('Nº Post destacados'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_VIEWS_HOMEPS',
-                        'label' => $this->l('Nº Post más vistos'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        $sidebar_ps_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Sidebar PrestaShop'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_VIEWS_SIDEBARPS',
-                        'label' => $this->l('Nº Post más vistos'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_POST_LAST_SIDEBARPS',
-                        'label' => $this->l('Nº Últimos posts'),
-                        'desc' => $this->l('0 para desactivarlos'),
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        return array($general_options, $seo_options, $sidebar_options, $comment_options, $post_options, $home_ps_options, $sidebar_ps_options);
+        return array($general_options, $seo_options, $comment_options);
 
     }
 
@@ -939,44 +750,54 @@ class Dbblog extends Module
         return $my_routes;
     }
 
+    public function renderPremiumTpl($tpl)
+    {
+        if($this->premium == 1) {
+            return $this->display(__FILE__, 'premium/' . $tpl);
+        }
+
+        return;
+    }
+
     public function hookdisplayLeftColumn($params)
     {
-        $id_lang = Context::getContext()->language->id;
-        // Mas vistos Sidebar
-        $num_views = Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
-        $more_views = DbBlogCategory::getPostsViews($id_lang, null, null, null, $num_views);
-        // Ultimos Sidebar
-        $num_last = Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
-        $last_posts = DbBlogCategory::getPostsLast($id_lang, null, null, null, $num_last);
+        if($this->premium == 1) {
 
-        if($num_views > 0 || $last_posts > 0) {
-            $this->context->smarty->assign(array(
-                'path_img' => _MODULE_DIR_ . 'dbblog/views/img/',
-                'more_views' => $more_views,
-                'last_posts' => $last_posts,
-            ));
-            return $this->display(__FILE__, 'views/templates/hook/sidebar.tpl');
+            $num_views = Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
+            $num_last = Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
+            $data = DbBlogPremium::hookdisplayLeftColumn($params);
+            $more_views = $data['more_views'];
+            $last_posts = $data['last_posts'];
+            if ($num_views > 0 || $last_posts > 0) {
+                $this->context->smarty->assign(array(
+                    'path_img' => _MODULE_DIR_ . 'dbblog/views/img/',
+                    'more_views' => $more_views,
+                    'last_posts' => $last_posts,
+                ));
+                return $this->display(__FILE__, 'premium/sidebar.tpl');
+            }
         }
     }
 
     public function hookdisplayHome($params)
     {
-        $id_lang = Context::getContext()->language->id;
-        // Mas vistos Sidebar
-        $limit_views_home = (int)Configuration::get('DBBLOG_POST_VIEWS_HOMEPS');
-        $more_views = DbBlogCategory::getPostsViews($id_lang, null, null, null, $limit_views_home);
-        // Ultimos Sidebar
-        $limit_last_home = (int)Configuration::get('DBBLOG_POST_FEATURED_HOMEPS');
-        $last_posts = DbBlogCategory::getPostsLast($id_lang, null, null, null, $limit_last_home);
+        if($this->premium == 1){
+            $data = DbBlogPremium::hookdisplayHome($params);
 
-        if($limit_views_home > 0 || $limit_last_home > 0) {
-            $this->context->smarty->assign(array(
-                'more_views' => $more_views,
-                'last_posts' => $last_posts,
-                'limit_views' => $limit_views_home,
-                'limit_last' => $limit_last_home,
-            ));
-            return $this->display(__FILE__, 'views/templates/hook/homeps.tpl');
+            $limit_views_home = $data['limit_views_home'];
+            $more_views = $data['more_views'];
+            $limit_last_home = $data['limit_last_home'];
+            $last_posts = $data['last_posts'];
+
+            if($limit_views_home > 0 || $limit_last_home > 0) {
+                Context::getContext()->smarty->assign(array(
+                    'more_views' => $more_views,
+                    'last_posts' => $last_posts,
+                    'limit_views' => $limit_views_home,
+                    'limit_last' => $limit_last_home,
+                ));
+                return $this->display(__FILE__, 'premium/homeps.tpl');
+            }
         }
     }
 
@@ -1011,49 +832,8 @@ class Dbblog extends Module
     public function shortCodes($desc)
     {
 
-        preg_match_all("/{dbblog_products (.*)}/",
-            $desc,
-            $shortcodes, PREG_PATTERN_ORDER);
-
-        // Valores
-        $variables = [];
-        foreach ($shortcodes[1] as $z => $sc){
-            $valores = explode(' ', $sc);
-            foreach ($valores as $val){
-                list($key, $data) = explode('=', $val);
-                $variables[$z][$key] = $data;
-                if($key == 'id_product'){
-                    $variables[$z]['type'] = 'product';
-                } elseif($key == 'id_category'){
-                    $variables[$z]['type'] = 'category';
-                }
-            }
-        }
-
-        foreach($variables as $key => $val){
-            $replace = '';
-            if($val['type'] == 'product'){
-                $product = $this->getProductSC((int)$val['id_product']);
-                if(is_object($product)) {
-                    $this->smarty->assign(array(
-                        'product' => $product,
-                        'type' => 'product'
-                    ));
-                    $replace = $this->fetch('module:dbblog/views/templates/front/_partials/sc_product.tpl');
-                }
-            } elseif($val['type'] == 'category') {
-                $products = $this->getProductsSC((int)$val['id_category'], $val['order'], $val['way'], (int)$val['num']);
-                if(is_array($products)) {
-                    $this->smarty->assign(array(
-                        'products' => $products,
-                        'type' => 'category'
-                    ));
-                    $replace = $this->fetch('module:dbblog/views/templates/front/_partials/sc_product.tpl');
-                }
-            }
-            $string_replace = $shortcodes[0][$key];
-
-            $desc = str_replace($string_replace, $replace, $desc);
+        if($this->premium == 1) {
+            return DbBlogPremium::shortCodes($desc);
         }
 
         return $desc;
