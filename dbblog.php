@@ -661,7 +661,9 @@ class Dbblog extends Module
 
         $this->context->controller->addJS($this->_path.'/views/js/dbblog.js');
         $this->context->controller->addCSS($this->_path.'/views/css/dbblog.css');
-        $this->context->smarty->registerPlugin("modifier",'base64_encode', 'base64_encode');
+		if (!$this->context->smarty->registered_plugins['modifier']['base64_encode']) {
+			$this->context->smarty->registerPlugin("modifier",'base64_encode', 'base64_encode');
+		}
         Media::addJsDef(array(
             'dbblog_ajax' => Context::getContext()->link->getModuleLink('dbblog', 'ajax', array()),
         ));
