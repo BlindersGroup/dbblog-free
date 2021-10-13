@@ -50,7 +50,7 @@
             {foreach from=$breadcrumb.links item=path name=breadcrumb}
             {
                 "@type": "ListItem",
-                "position": {$smarty.foreach.breadcrumb.iteration},
+                "position": {$smarty.foreach.breadcrumb.iteration - 1},
                 "name": "{$path.title}",
                 "item": "{$path.url}"
             }{if not $smarty.foreach.breadcrumb.last},{/if}
