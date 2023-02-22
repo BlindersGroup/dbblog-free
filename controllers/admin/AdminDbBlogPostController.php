@@ -34,7 +34,7 @@ class AdminDbBlogPostController extends ModuleAdminController
         $this->table = 'dbblog_post';
         $this->className = 'DbBlogPost';
         $this->lang = true;
-        $this->multishop_context = Shop::CONTEXT_ALL;
+        //$this->multishop_context = Shop::CONTEXT_ALL;
 
         parent::__construct();
 
@@ -154,7 +154,7 @@ class AdminDbBlogPostController extends ModuleAdminController
             $this->toolbar_title = $this->l('Actualizar post');
         }
 
-        $categories = DbBlogCategory::getCategories($this->context->language->id, true, false);
+        $categories = DbBlogCategory::getCategories($this->context->language->id, true, -1);
         $categories_selected = DbBlogCategory::getCategoriesSelected($obj->id_dbblog_post);
         $authors = DbBlogPost::getAuthors(999);
 
@@ -348,6 +348,16 @@ class AdminDbBlogPostController extends ModuleAdminController
             'title' => $this->trans('Save', array(), 'Admin.Actions'),
         );
 
+        $this->fields_form['buttons'] = array(
+            'save-and-stay' => array(
+                'title' => $this->trans('Guardar y permanecer', array(), 'Admin.Actions'),
+                'name' => 'submitAdd'.$this->table.'AndStay',
+                'type' => 'submit',
+                'class' => 'btn btn-default pull-right',
+                'icon' => 'process-icon-save'
+            )
+        );
+
         return parent::renderForm();
     }
 
@@ -358,7 +368,7 @@ class AdminDbBlogPostController extends ModuleAdminController
         if ($object->id > 0) {
             // Imagen
             if (isset($_FILES['image']) && $_FILES['image']['size'] > 0) {
-                $image_name = $this->saveImg();
+                $image_name = $this->saveImg($object);
                 $object->image = $image_name;
                 $object->update();
             }
@@ -380,9 +390,9 @@ class AdminDbBlogPostController extends ModuleAdminController
     {
         $object = parent::processUpdate();
 
-        if ($object->id_dbblog_post > 0) {
+        if ($object != false && $object->id_dbblog_post > 0) {
             // Imagen
-            $image_name = $this->saveImg();
+            $image_name = $this->saveImg($object);
             $object->image = $image_name;
             $object->update();
 
@@ -407,9 +417,11 @@ class AdminDbBlogPostController extends ModuleAdminController
         // Delete Image
         if(isset($object->image)) {
             foreach ($object->image as $image) {
-                $del_img = _PS_MODULE_DIR_ . 'dbblog/views/img/post/' . $image;
-                if (file_exists($del_img)) {
-                    unlink($del_img);
+                if(!empty($image)) {
+                    $del_img = _PS_MODULE_DIR_ . 'dbblog/views/img/post/' . $image;
+                    if (file_exists($del_img)) {
+                        unlink($del_img);
+                    }
                 }
             }
         }
@@ -422,7 +434,7 @@ class AdminDbBlogPostController extends ModuleAdminController
         return strip_tags(stripslashes($html));
     }
 
-    public function saveImg()
+    public function saveImg($post)
     {
         // Guardamos las imagenes
         $type = Tools::strtolower(Tools::substr(strrchr($_FILES['image']['name'], '.'), 1));
@@ -431,23 +443,47 @@ class AdminDbBlogPostController extends ModuleAdminController
             isset($_FILES['image']['tmp_name']) &&
             !empty($_FILES['image']['tmp_name']) &&
             !empty($imagesize) &&
-            in_array($type, array('jpg', 'gif', 'jpeg', 'png'))
+            in_array($type, array('jpg', 'gif', 'jpeg', 'png', 'webp'))
         ) {
             $temp_name = tempnam(_PS_TMP_IMG_DIR_, 'PS');
-            $image_name = $_FILES['image']['name'];
-            if (!move_uploaded_file($_FILES['image']['tmp_name'], dirname(__FILE__).'/../../views/img/post/'.$image_name)) {
+            $imagen_tmp = $_FILES['image']['tmp_name'];
+            $image_name = $post->id.'-'.$post->link_rewrite[1];
+            $image_name_extension = $post->id.'-'.$post->link_rewrite[1].'.'.$type;
+            $dir_img = dirname(__FILE__).'/../../views/img/post/';
+            if (!move_uploaded_file($imagen_tmp, $dir_img.$image_name_extension)) {
                 $this->errors[] = $this->l('Error al subir la imagen');
                 return false;
             }
+
+            // redimensionamos las imagenes
+            $img_orig = $dir_img.$image_name_extension;
+            $img_small = $dir_img.$image_name.'-small.'.$type;
+            $img_big = $dir_img.$image_name.'-big.'.$type;
+            list($originalWidth, $originalHeight) = getimagesize($img_orig);
+            $ratio = $originalWidth / $originalHeight;
+            $height_small = 400 / $ratio;
+            $height_big = 800 / $ratio;
+            ImageManager::resize($img_orig, $img_small, 400, $height_small);
+            ImageManager::resize($img_orig, $img_big, 800, $height_big);
+
+            // Generamos el webp
+            $checkWebp = $this->module->checkWebp();
+            if($checkWebp && $type != 'webp') {
+                $img_small_webp = $img_small.'.webp';
+                $img_big_webp = $img_big.'.webp';
+                DbBlogPremium::convertImageToWebP($img_small, $img_small_webp);
+                DbBlogPremium::convertImageToWebP($img_big, $img_big_webp);
+            }
+
             if (isset($temp_name)) {
                 @unlink($temp_name);
             }
 
         } else {
-            $image_name = Tools::getValue('image_old');
+            $image_name_extension = Tools::getValue('image_old');
         }
 
-        return $image_name;
+        return $image_name_extension;
     }
 
     public static function getImg($img, $row)

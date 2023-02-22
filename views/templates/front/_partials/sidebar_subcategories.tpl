@@ -23,15 +23,18 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<div class="header_blog">
-    <div class="container">
-        <div class="dbblog_header">
-            {if $isHome == 0}
-                <a class="dbblog_title" href="{$url_home}">{$title_blog}</a>
-            {else}
-                <h1 class="dbblog_title">{$title_blog}</h1>
-            {/if}
-            {include file='module:dbblog/views/templates/front/_partials/menu.tpl'}
-        </div>
+{if $isCategory == 1 && $subcategories|count > 0}
+    <div class="db_subcategorie_sidebar --card">
+        <span class="title_sidebar">{l s='Subcategorías' mod='dbblog'}</span>
+        <ul class="subcategories_sidebar">
+            {foreach from=$subcategories item=category}
+                <li>
+                    <a class="link_subcategory" href="{$category.url}">
+                        {$category.title}
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg>
+                    </a>
+                </li>
+            {/foreach}
+        </ul>
     </div>
-</div>
+{/if}

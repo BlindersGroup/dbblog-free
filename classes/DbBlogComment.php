@@ -47,7 +47,7 @@ class DbBlogComment extends ObjectModel
         return $tree;
     }
 
-    public function buildTree(array $elements, $parentId = 0) {
+    public static function buildTree(array $elements, $parentId = 0) {
         $branch = array();
     
         foreach ($elements as $element) {
@@ -98,7 +98,7 @@ class DbBlogComment extends ObjectModel
         $update = "UPDATE "._DB_PREFIX_."dbblog_comment SET approved = '$active' WHERE id_dbblog_comment = '$id_comment'";
         Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
 
-        die(Tools::jsonEncode(
+        die(json_encode(
             array(
                 'status' => true,
                 'message' => 'Actualizado correctamente',

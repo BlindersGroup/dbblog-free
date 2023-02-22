@@ -1,5 +1,5 @@
 {*
-* 2007-2014 PrestaShop
+* 2007-2021 PrestaShop
 *
 * NOTICE OF LICENSE
 *
@@ -17,21 +17,19 @@
 * versions in the future. If you wish to customize PrestaShop for your
 * needs please refer to http://www.prestashop.com for more information.
 *
-*  @author PrestaShop SA <contact@prestashop.com>
-*  @copyright  2007-2014 PrestaShop SA
-*  @license    http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
-*  International Registered Trademark & Property of PrestaShop SA
+* @author    DevBlinders <soporte@devblinders.com>
+* @copyright Copyright (c) DevBlinders
+* @license   Commercial license
 *}
 
-<div class="header_blog">
-    <div class="container">
-        <div class="dbblog_header">
-            {if $isHome == 0}
-                <a class="dbblog_title" href="{$url_home}">{$title_blog}</a>
-            {else}
-                <h1 class="dbblog_title">{$title_blog}</h1>
-            {/if}
-            {include file='module:dbblog/views/templates/front/_partials/menu.tpl'}
-        </div>
-    </div>
+<div class="iframebottom_devblinders">
+    <iframe src="https://cdn.devblinders.com/modules/free/iframe_bottom.php?module=classicblinders"
+            width="100%"
+            height="250"
+            border="0"
+            frameborder="0"
+            scrolling="no"
+            id="frame_module"
+    >
+    </iframe>
 </div>

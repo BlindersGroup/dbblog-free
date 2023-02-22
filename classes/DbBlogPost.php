@@ -55,6 +55,41 @@ class DbBlogPost extends ObjectModel
         parent::__construct($id_dbblog_post, $id_lang, $id_shop);
     }
 
+    public function add($autodate = true, $null_values = false)
+    {
+        $default_language_id = Configuration::get('PS_LANG_DEFAULT');
+        foreach ( $this->title as $k => $value ) {
+            if ( preg_match( '/^[1-9]\./', $value ) ) {
+                $this->title[ $k ] = '0' . $value;
+            }
+            if(empty($value)) {
+                $this->title[$k] = $this->title[$default_language_id];
+            }
+        }
+        foreach ( $this->link_rewrite as $k => $value ) {
+            if(empty($value)) {
+                $this->link_rewrite[$k] = Tools::link_rewrite($this->title[$k]);
+            }
+        }
+        $ret = parent::add($autodate, $null_values);
+        return $ret;
+    }
+
+    public function update( $null_values = false ) {
+
+        foreach ( $this->title as $k => $value ) {
+            if ( preg_match( '/^[1-9]\./', $value ) ) {
+                $this->title[ $k ] = '0' . $value;
+            }
+        }
+        foreach ( $this->link_rewrite as $k => $value ) {
+            if(empty($value)) {
+                $this->link_rewrite[$k] = Tools::link_rewrite($this->title[$k]);
+            }
+        }
+        return parent::update( $null_values );
+    }
+
     public static function getAuthors($limit = 0, $all = 1)
     {
         $id_lang = Context::getContext()->language->id;
@@ -62,32 +97,31 @@ class DbBlogPost extends ObjectModel
         if($limit == 0) {
             $limit = (int)Configuration::get('DBBLOG_SIDEBAR_AUTHOR');
         }
-        $sql = "SELECT dbal.name, dba.id_dbaboutus_author, dbal.link_rewrite, dbal.profession
-            FROM "._DB_PREFIX_."dbaboutus_author dba
-            INNER JOIN "._DB_PREFIX_."dbaboutus_author_lang dbal 
-                ON dba.id_dbaboutus_author = dbal.id_dbaboutus_author 
-                    AND dbal.id_lang = '$id_lang' AND dbal.id_shop = '$id_shop'
-            WHERE dba.active = 1
-            ORDER BY dbal.name ASC";
+        $sql = "SELECT 
+                    dbal.name, dba.id_dbaboutus_author, 
+                    dbal.link_rewrite, 
+                    dbal.profession,
+                    (SELECT count(*) as total FROM "._DB_PREFIX_."dbblog_post WHERE author = dba.id_dbaboutus_author AND active = 1) as posts
+                FROM "._DB_PREFIX_."dbaboutus_author dba
+                INNER JOIN "._DB_PREFIX_."dbaboutus_author_lang dbal 
+                    ON dba.id_dbaboutus_author = dbal.id_dbaboutus_author 
+                        AND dbal.id_lang = '$id_lang' AND dbal.id_shop = '$id_shop'
+                WHERE dba.active = 1
+                ORDER BY posts DESC";
+        if($all == 0) {
+            $sql .= " LIMIT ".$limit;
+        }
+
         $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
 
         $authors = array();
         foreach ($result as $key => $row) {
-            if($key > $limit){
-                break;
-            }
-            $sql = "SELECT count(*) as total FROM "._DB_PREFIX_."dbblog_post WHERE author = '".$row['id_dbaboutus_author']."' AND active = 1";
-            $comments_author = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
-            if($all == 0 && $comments_author == 0){
-
-            } else {
-                $authors[$row['id_dbaboutus_author']]['name'] = $row['name'];
-                $authors[$row['id_dbaboutus_author']]['id'] = $row['id_dbaboutus_author'];
-                $authors[$row['id_dbaboutus_author']]['profession'] = $row['profession'];
-                $authors[$row['id_dbaboutus_author']]['comments_author'] = (int)$comments_author;
-                $authors[$row['id_dbaboutus_author']]['imagen'] = self::getImage($row['id_dbaboutus_author']);
-                $authors[$row['id_dbaboutus_author']]['url'] = self::getLink_author($row['link_rewrite']);
-            }
+            $authors[$row['id_dbaboutus_author']]['name'] = $row['name'];
+            $authors[$row['id_dbaboutus_author']]['id'] = $row['id_dbaboutus_author'];
+            $authors[$row['id_dbaboutus_author']]['profession'] = $row['profession'];
+            $authors[$row['id_dbaboutus_author']]['comments_author'] = (int)$row['posts'];
+            $authors[$row['id_dbaboutus_author']]['imagen'] = self::getImage($row['id_dbaboutus_author']);
+            $authors[$row['id_dbaboutus_author']]['url'] = self::getLink_author($row['link_rewrite']);
         }
         return $authors;
     }
@@ -96,10 +130,13 @@ class DbBlogPost extends ObjectModel
     {
         $id_lang = Context::getContext()->language->id;
         $id_shop = (int)Context::getContext()->shop->id;
-        $sql = "SELECT * 
+        $sql = "SELECT dba.*, dbal.*, dbatl.name as name_tag
             FROM "._DB_PREFIX_."dbaboutus_author dba
             INNER JOIN "._DB_PREFIX_."dbaboutus_author_lang dbal 
                 ON dba.id_dbaboutus_author = dbal.id_dbaboutus_author 
+                    AND dbal.id_lang = '$id_lang' AND dbal.id_shop = '$id_shop'
+            INNER JOIN "._DB_PREFIX_."dbaboutus_tag_lang dbatl
+                ON dba.id_tag = dbatl.id_dbaboutus_tag
                     AND dbal.id_lang = '$id_lang' AND dbal.id_shop = '$id_shop'
             WHERE dba.id_dbaboutus_author = '$id_author'";
         $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
@@ -111,6 +148,7 @@ class DbBlogPost extends ObjectModel
         $author['id'] = $id_author;
         $author['profession'] = $result['profession'];
         $author['description'] = $result['short_desc'];
+        $author['tag'] = $result['name_tag'];
         $author['twitter'] = $result['twitter'];
         $author['facebook'] = $result['facebook'];
         $author['linkedin'] = $result['linkedin'];
@@ -148,7 +186,7 @@ class DbBlogPost extends ObjectModel
 
             $posts[$row['id_dbblog_post']]['author'] = self::getAuthorById($row['author']);
             $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
-            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['image'] = Dbblog::getNewImg($row['image']);
             $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
             $posts[$row['id_dbblog_post']]['title'] = $row['title'];
             $posts[$row['id_dbblog_post']]['views'] = $row['views'];
@@ -156,7 +194,7 @@ class DbBlogPost extends ObjectModel
             $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd/m/Y');
             $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_.'dbblog/views/img/post/'.$row['image'];
             $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
-            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogPost::getLink($row['link_category'], $id_lang);
             $posts[$row['id_dbblog_post']]['total_comments'] = $comments['total'];
             $posts[$row['id_dbblog_post']]['rating'] = $rating;
             $posts[$row['id_dbblog_post']]['active'] = $row['active'];
@@ -166,16 +204,13 @@ class DbBlogPost extends ObjectModel
 
     public static function getImage($id_employee)
     {
-        $imagen = _PS_MODULE_DIR_.'dbaboutus/views/img/author/'.$id_employee.'.jpg';
-        if (file_exists($imagen)) {
-            $img = _MODULE_DIR_.'dbaboutus/views/img/author/'.$id_employee.'.jpg';
-        } else {
-            $img = '';
-        }
+        $image = $id_employee.'.jpg';
+        $img = Dbaboutus::getNewImg($image);
+
         return $img;
     }
 
-    public static function getPostFeatures($id_lang, $limit = 5)
+    public static function getPostFeatures($id_lang, $limit = 10)
     {
         $id_shop = (int)Context::getContext()->shop->id;
         $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
@@ -196,13 +231,14 @@ class DbBlogPost extends ObjectModel
         foreach ($result as $row) {
             $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
             $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
-            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+//            $posts[$row['id_dbblog_post']]['image'] = $row['image'];
+            $posts[$row['id_dbblog_post']]['image'] = Dbblog::getNewImg($row['image']);
             $posts[$row['id_dbblog_post']]['url'] = self::getLink($row['link_rewrite'], $id_lang);
             $posts[$row['id_dbblog_post']]['title'] = $row['title'];
             $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
-            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd F Y');
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd/m/Y');
             $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
-            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogPost::getLink($row['link_category'], $id_lang);
             $posts[$row['id_dbblog_post']]['active'] = $row['active'];
         }
         return $posts;
@@ -236,7 +272,7 @@ class DbBlogPost extends ObjectModel
         $post = array();
         $post['author'] = DbBlogPost::getAuthorById($result['author']);
         $post['id'] = $result['id_dbblog_post'];
-        $post['image'] = $result['image'];
+        $post['image'] = Dbblog::getNewImg($result['image']);
         if(!empty($post['image'])) {
             $post['img'] = _MODULE_DIR_ . 'dbblog/views/img/post/' . $result['image'];
         } else {
@@ -274,6 +310,74 @@ class DbBlogPost extends ObjectModel
         return $post;   
     }
 
+
+    public static function getTotalPosts($id_lang, $page = 0)
+    {
+        $id_lang = Context::getContext()->language->id;
+        $id_shop = (int)Context::getContext()->shop->id;
+
+
+        $sql = "SELECT DISTINCT COUNT(p.id_dbblog_post) as total
+                FROM "._DB_PREFIX_."dbblog_post p 
+                INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl 
+                    ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+                WHERE p.active = 1";
+
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+
+        return $result;
+    }
+
+
+    public static function getPostHome($id_lang, $page = 0)
+    {
+
+        $id_shop = (int)Context::getContext()->shop->id;
+        $limit = Configuration::get('DBBLOG_POSTS_PER_HOME');
+        if ($limit == 0) {
+            $limit = 10;
+        }
+        $offset = $page * $limit;
+
+        $sql = "SELECT p.*, pl.*, cl.title as title_category, cl.link_rewrite as link_category
+                FROM " . _DB_PREFIX_ . "dbblog_post p
+                INNER JOIN " . _DB_PREFIX_ . "dbblog_post_lang pl 
+                    ON p.id_dbblog_post = pl.id_dbblog_post AND pl.id_lang = '$id_lang' AND pl.id_shop = '$id_shop'
+                INNER JOIN " . _DB_PREFIX_ . "dbblog_category_lang cl 
+                    ON p.id_dbblog_category = cl.id_dbblog_category AND pl.id_lang = '$id_lang' AND cl.id_shop = '$id_shop'
+                WHERE p.active = 1
+                GROUP BY p.id_dbblog_post
+                ORDER BY p.date_add DESC
+                LIMIT " . $offset . "," . $limit;
+
+        $result = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql);
+
+        $posts = array();
+        foreach ($result as $row) {
+            $comments = DbBlogComment::getTotalCommentsByPost($row['id_dbblog_post']);
+            if ($comments['total'] == 0) {
+                $rating = 0;
+            } else {
+                $rating = round($comments['suma'] * 100 / ($comments['total'] * 5), 0);
+            }
+
+            $posts[$row['id_dbblog_post']]['author'] = DbBlogPost::getAuthorById($row['author']);
+            $posts[$row['id_dbblog_post']]['id'] = $row['id_dbblog_post'];
+            $posts[$row['id_dbblog_post']]['image'] = Dbblog::getNewImg($row['image']);
+            $posts[$row['id_dbblog_post']]['url'] = DbBlogPost::getLink($row['link_rewrite'], $id_lang);
+            $posts[$row['id_dbblog_post']]['title'] = $row['title'];
+            $posts[$row['id_dbblog_post']]['short_desc'] = $row['short_desc'];
+            $posts[$row['id_dbblog_post']]['date'] = date_format(date_create($row['date_upd']), 'd/m/Y');
+            $posts[$row['id_dbblog_post']]['img'] = _MODULE_DIR_ . 'dbblog/views/img/post/' . $row['image'];
+            $posts[$row['id_dbblog_post']]['title_category'] = $row['title_category'];
+            $posts[$row['id_dbblog_post']]['url_category'] = DbBlogCategory::getLink($row['link_category'], $id_lang);
+            $posts[$row['id_dbblog_post']]['total_comments'] = $comments['total'];
+            $posts[$row['id_dbblog_post']]['rating'] = $rating;
+        }
+        return $posts;
+
+    }
+
     public static function sumView($id_post)
     {
         $sql = "UPDATE "._DB_PREFIX_."dbblog_post SET views = views + 1 WHERE id_dbblog_post = '$id_post'";
@@ -291,7 +395,7 @@ class DbBlogPost extends ObjectModel
         $update = "UPDATE "._DB_PREFIX_."dbblog_post SET active = '$active' WHERE id_dbblog_post = '$id_post'";
         Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
 
-        die(Tools::jsonEncode(
+        die(json_encode(
             array(
                 'status' => true,
                 'message' => 'Actualizado correctamente',
@@ -310,7 +414,7 @@ class DbBlogPost extends ObjectModel
         $update = "UPDATE "._DB_PREFIX_."dbblog_post SET `index` = '$active' WHERE id_dbblog_post = '$id_post'";
         Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
 
-        die(Tools::jsonEncode(
+        die(json_encode(
             array(
                 'status' => true,
                 'message' => 'Actualizado correctamente',
@@ -329,7 +433,7 @@ class DbBlogPost extends ObjectModel
         $update = "UPDATE "._DB_PREFIX_."dbblog_post SET `featured` = '$active' WHERE id_dbblog_post = '$id_post'";
         Db::getInstance(_PS_USE_SQL_SLAVE_)->execute($update);
 
-        die(Tools::jsonEncode(
+        die(json_encode(
             array(
                 'status' => true,
                 'message' => 'Actualizado correctamente',

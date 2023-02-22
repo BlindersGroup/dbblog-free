@@ -54,7 +54,7 @@ class Dbblog extends Module
 
         $this->name = 'dbblog';
         $this->tab = 'front_office_features';
-        $this->version = '1.2.0';
+        $this->version = '2.0.3';
         $this->author = 'DevBlinders';
         $this->need_instance = 0;
 
@@ -81,20 +81,47 @@ class Dbblog extends Module
      */
     public function install()
     {
-	if(!Module::isEnabled('dbaboutus')){
+        if(!Module::isInstalled('dbdatatext')){
+            $this->rcopy(dirname(__FILE__).'/dependencies/dbdatatext/', _PS_MODULE_DIR_.'/dbdatatext/');
+            $dbdatatext = Module::getInstanceByName('dbdatatext');
+            $dbdatatext->install();
+        } else {
+            if(!Module::isEnabled('dbdatatext')){
+                $dbdatatext = Module::getInstanceByName('dbdatatext');
+                $dbdatatext->enable();
+            }
+        }
+
+        if(!Module::isInstalled('dbaboutus')){
+            $this->rcopy(dirname(__FILE__).'/dependencies/dbaboutus/', _PS_MODULE_DIR_.'/dbaboutus/');
+            $dbdatatext = Module::getInstanceByName('dbaboutus');
+            $dbdatatext->install();
+        } else {
+            if(!Module::isEnabled('dbaboutus')){
+                $dbdatatext = Module::getInstanceByName('dbaboutus');
+                $dbdatatext->enable();
+            }
+        }
+
+	    if(!Module::isEnabled('dbaboutus')){
             $this->_errors[] = $this->l('Debe de tener instalado y activo el módulo dbaboutus y el módulo dbdatatext');
             return false;
         }
+
         // Settings
-        $this->createDb();
+        include(dirname(__FILE__).'/sql/install.php');
         $this->createTabs();
+
         // Config general
         Configuration::updateValue('DBBLOG_SLUG', 'blog');
         Configuration::updateValue('DBBLOG_AUTHOR_SLUG', 'author');
-        Configuration::updateValue('DBBLOG_COLOR', '#3e5062');
         Configuration::updateValue('DBBLOG_POSTS_PER_PAGE', '12');
         Configuration::updateValue('DBBLOG_POSTS_PER_HOME', '12');
-        Configuration::updateValue('DBBLOG_POSTS_PER_AUTHOR', '3');
+        Configuration::updateValue('DBBLOG_POSTS_PER_AUTHOR', '4');
+        // Colores
+        Configuration::updateValue('DBBLOG_COLOR_TEXT', '#7a7a7a');
+        Configuration::updateValue('DBBLOG_COLOR', '#24b9d7');
+        Configuration::updateValue('DBBLOG_COLOR_BACKGROUND', '#F6F6F6');
         // Sidebar Blog
         Configuration::updateValue('DBBLOG_SIDEBAR_VIEWS', '4');
         Configuration::updateValue('DBBLOG_SIDEBAR_AUTHOR', '3');
@@ -105,8 +132,8 @@ class Dbblog extends Module
         // Config Post
         Configuration::updateValue('DBBLOG_POST_EXTRACT', '0');
         Configuration::updateValue('DBBLOG_POST_READMORE', '0');
-        Configuration::updateValue('DBBLOG_POST_RELATED', '6');
-        Configuration::updateValue('DBBLOG_POST_AUTHOR', '6');
+        Configuration::updateValue('DBBLOG_POST_RELATED', '4');
+        Configuration::updateValue('DBBLOG_POST_AUTHOR', '4');
         // Home PrestaShop
         Configuration::updateValue('DBBLOG_POST_FEATURED_HOMEPS', '0');
         Configuration::updateValue('DBBLOG_POST_VIEWS_HOMEPS', '0');
@@ -117,15 +144,15 @@ class Dbblog extends Module
 
         return parent::install() &&
             $this->registerHook('moduleRoutes') &&
-            $this->registerHook('header') &&
-            $this->registerHook('backOfficeHeader') &&
+            $this->registerHook('displayHeader') &&
+            $this->registerHook('displayBackOfficeHeader') &&
             $this->registerHook('displayHome') &&
             $this->registerHook('displayLeftColumn');
     }
 
     public function uninstall()
     {
-        $this->dropTables();
+//        include(dirname(__FILE__).'/sql/uninstall.php');
         $this->deleteTabs();
         Configuration::deleteByName('DBBLOG_SLUG');
         Configuration::deleteByName('DBBLOG_AUTHOR_SLUG');
@@ -134,105 +161,22 @@ class Dbblog extends Module
     }
 
     /**
-     * Create tables
+     * Function to Copy folders and files
      */
-    public function createDb()
-    {
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_category` (
-            `id_dbblog_category` int(11) NOT NULL AUTO_INCREMENT,
-            `id_parent` int(10) NOT NULL DEFAULT \'0\',
-            `position` int(10) NOT NULL DEFAULT \'0\',
-            `index` tinyint(1) unsigned NOT NULL DEFAULT \'1\',
-            `active` tinyint(1) unsigned NOT NULL DEFAULT \'0\',
-            `date_add` datetime NOT NULL,
-            `date_upd` datetime NOT NULL,
-            PRIMARY KEY (`id_dbblog_category`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_category_lang` (
-            `id_dbblog_category` int(11) NOT NULL,
-            `id_lang` int(11) NOT NULL,
-            `id_shop` int(11) NOT NULL,
-            `title` varchar(128) NOT NULL,
-            `short_desc` varchar(4000) NOT NULL,
-            `large_desc` text NOT NULL,
-            `link_rewrite` varchar(128) NOT NULL,
-            `meta_title` varchar(128) NOT NULL,
-            `meta_description` varchar(255) NOT NULL,
-            PRIMARY KEY (`id_dbblog_category`, `id_lang`, `id_shop`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_category_post` (
-            `id_dbblog_category` int(11) NOT NULL,
-            `id_dbblog_post` int(11) NOT NULL,
-            PRIMARY KEY (`id_dbblog_category`, `id_dbblog_post`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_post` (
-            `id_dbblog_post` int(11) NOT NULL AUTO_INCREMENT,
-            `id_dbblog_category` int(11) NOT NULL,
-            `type` int(11) NOT NULL DEFAULT \'1\',
-            `author` int(11) NOT NULL,
-            `featured` tinyint(1) NOT NULL DEFAULT \'0\',
-            `index` tinyint(1) unsigned NOT NULL DEFAULT \'1\',
-            `views` int(11) unsigned NOT NULL DEFAULT \'0\',
-            `active` tinyint(1) unsigned NOT NULL DEFAULT \'0\',
-            `date_add` datetime NOT NULL,
-            `date_upd` datetime NOT NULL,
-            PRIMARY KEY (`id_dbblog_post`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_post_lang` (
-            `id_dbblog_post` int(11) NOT NULL,
-            `id_lang` int(11) NOT NULL,
-            `id_shop` int(11) NOT NULL,
-            `title` varchar(128) NOT NULL,
-            `short_desc` varchar(4000) NOT NULL,
-            `large_desc` text NOT NULL,
-            `image` varchar(255) NOT NULL,
-            `link_rewrite` varchar(128) NOT NULL,
-            `meta_title` varchar(128) NOT NULL,
-            `meta_description` varchar(255) NOT NULL,
-            PRIMARY KEY (`id_dbblog_post`, `id_lang`, `id_shop`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-
-        $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'dbblog_comment` (
-            `id_dbblog_comment` int(11) NOT NULL AUTO_INCREMENT,
-            `id_comment_parent` int(11) unsigned NOT NULL DEFAULT \'0\',
-            `id_post` int(11) NOT NULL,
-            `name` varchar(128) NOT NULL,
-            `comment` text NOT NULL,
-            `rating` int(1) NOT NULL,
-            `approved` tinyint(1) unsigned NOT NULL DEFAULT \'0\',
-            `moderator` tinyint(1) unsigned NOT NULL DEFAULT \'0\',
-            `date_add` datetime NOT NULL,
-            PRIMARY KEY (`id_dbblog_comment`, `id_post`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8;';
-        
-        foreach ($sql as $query) {
-            if (Db::getInstance()->execute($query) == false) {
-                return false;
-            }
+    function rcopy($src, $dst) {
+        if (file_exists ( $dst )) {
+            return;
         }
-    }
-
-    /**
-     * Drop tables
-     */
-    public function dropTables()
-    {
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_category`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_category_lang`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_category_post`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_post`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_post_lang`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_author`';
-        $sql[] = 'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'dbblog_comment`';
-
-        foreach ($sql as $query) {
-            if (Db::getInstance()->execute($query) == false) {
-                return false;
+        if (is_dir ( $src )) {
+            mkdir ( $dst );
+            $files = scandir ( $src );
+            foreach ( $files as $file ) {
+                if ($file != "." && $file != "..") {
+                    $this->rcopy("$src/$file", "$dst/$file");
+                }
             }
+        } else if (file_exists ( $src )) {
+            copy($src, $dst);
         }
     }
 
@@ -327,6 +271,18 @@ class Dbblog extends Module
         $tab_config->id_parent = $parent->id;
         $tab_config->module = $this->name;
         $tab_config->add();
+
+        // Responder comentario
+        $tab_config = new Tab();
+        $tab_config->name = array();
+        foreach (Language::getLanguages(true) as $lang)
+            $tab_config->name[$lang['id_lang']] = $this->l('Responder');
+
+        $tab_config->class_name = 'AdminDbBlogRespond';
+        $tab_config->id_parent = $parent->id;
+        $tab_config->module = $this->name;
+        $tab_config->active = 0;
+        $tab_config->add();
     }
 
     /**
@@ -341,6 +297,7 @@ class Dbblog extends Module
         $idTabs[] = Tab::getIdFromClassName('AdminDbBlogPost');
         $idTabs[] = Tab::getIdFromClassName('AdminDbBlogComment');
         $idTabs[] = Tab::getIdFromClassName('AdminDbBlogSetting');
+        $idTabs[] = Tab::getIdFromClassName('AdminDbBlogRespond');
 
         foreach ($idTabs as $idTab) {
             if ($idTab) {
@@ -351,296 +308,15 @@ class Dbblog extends Module
     }
 
     /**
-     * Load the configuration form
-     */
-    public function getContent()
-    {
-        /**
-         * If values have been submitted in the form, process.
-         */
-        if (((bool)Tools::isSubmit('submitDbludaModule')) == true) {
-            $this->postProcess();
-        }
-
-        $this->context->smarty->assign('module_dir', $this->_path);
-
-        $output = $this->context->smarty->fetch($this->local_path.'views/templates/admin/configure.tpl');
-
-        return $this->renderForm();
-    }
-
-    /**
-     * Create the form that will be displayed in the configuration of your module.
-     */
-    protected function renderForm()
-    {
-        $helper = new HelperForm();
-
-        $helper->show_toolbar = false;
-        $helper->table = $this->table;
-        $helper->module = $this;
-        $helper->default_form_language = $this->context->language->id;
-        $helper->allow_employee_form_lang = Configuration::get('PS_BO_ALLOW_EMPLOYEE_FORM_LANG', 0);
-
-        $helper->identifier = $this->identifier;
-        $helper->submit_action = 'submitDbludaModule';
-        $helper->currentIndex = $this->context->link->getAdminLink('AdminModules', false)
-            .'&configure='.$this->name.'&tab_module='.$this->tab.'&module_name='.$this->name;
-        $helper->token = Tools::getAdminTokenLite('AdminModules');
-
-        $helper->tpl_vars = array(
-            'fields_value' => $this->getConfigFormValues(), /* Add values for your inputs */
-            'languages' => $this->context->controller->getLanguages(),
-            'id_language' => $this->context->language->id,
-        );
-
-        return $helper->generateForm($this->getConfigForm());
-    }
-
-    /**
-     * Create the structure of your form.
-     */
-    protected function getConfigForm()
-    {
-        if($this->premium == 1){
-            return DbBlogPremium::getConfigForm();
-        }
-
-        $general_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('General'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_TITLE',
-                        'label' => $this->l('Título Blog'),
-                        'desc' => $this->l('El titulo del blog'),
-                        'lang'  => true,
-                    ),
-
-                    array(
-                        'type' => 'color',
-                        'name' => 'DBBLOG_COLOR',
-                        'label' => $this->l('Color'),
-                        'desc' => $this->l('Color general del blog'),
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        $seo_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('SEO'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_SLUG',
-                        'label' => $this->l('URL del blog'),
-                        'lang'  => true,
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_META_TITLE',
-                        'label' => $this->l('Meta Título Blog'),
-                        'desc' => $this->l('El meta Description del blog'),
-                        'lang'  => true,
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_META_DESCRIPTION',
-                        'label' => $this->l('Meta Description Blog'),
-                        'desc' => $this->l('La metadescription del blog'),
-                        'lang'  => true,
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-        $list_cms = CMSCore::listCms($this->context->language->id);
-        $comment_options = array(
-            'form' => array(
-                'legend' => array(
-                'title' => $this->l('Comentarios'),
-                'icon' => 'icon-cogs',
-                ),
-                'input' => array(
-
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Permitir comentarios'),
-                        'name' => 'DBBLOG_COMMENTS',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-
-                    array(
-                        'type' => 'textarea',
-                        'name' => 'DBBLOG_RGPD',
-                        'label' => $this->l('Texto RGPD'),
-                        'autoload_rte' => true,
-                        'rows' => 5,
-                        'cols' => 40,
-                        'lang'  => true,
-                    ),
-
-                    array(
-                        'type' => 'select',
-                        'lang' => true,
-                        'label' => $this->l('Política de privacidad'),
-                        'name' => 'DBBLOG_PRIVACITY',
-                        'desc' => $this->l('Seleccionar la página de de política de privacidad'),
-                        'options' => array(
-                            'query' => $list_cms,
-                            'id' => 'id_cms', 
-                            'name' => 'meta_title'
-                        ),
-                    ),
-
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Activar Recaptcha V2'),
-                        'name' => 'DBBLOG_RECAPTCHA_ENABLE',
-                        'is_bool' => true,
-                        'values' => array(
-                            array(
-                                'id' => 'active_on',
-                                'value' => true,
-                                'label' => $this->l('Enabled')
-                            ),
-                            array(
-                                'id' => 'active_off',
-                                'value' => false,
-                                'label' => $this->l('Disabled')
-                            )
-                        ),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_RECAPTCHA',
-                        'label' => $this->l('reCAPTCHA clave pública'),
-                        'desc' => $this->l('Introducir la clave publica de reCAPTCHA de Google'),
-                    ),
-
-                    array(
-                        'type' => 'text',
-                        'name' => 'DBBLOG_RECAPTCHA_PRIVATE',
-                        'label' => $this->l('reCAPTCHA clave privada'),
-                        'desc' => $this->l('Introducir la clave privada de reCAPTCHA de Google'),
-                    ),
-
-                ),
-                'submit' => array(
-                    'title' => $this->l('Save'),
-                ),
-            ),
-        );
-
-
-        return array($general_options, $seo_options, $comment_options);
-
-    }
-
-    /**
-     * Set values for the inputs.
-     */
-    protected function getConfigFormValues()
-    {
-        $languages = Language::getLanguages(false);
-        $values = array();
-
-        foreach ($languages as $lang){         
-            $values['DBBLOG_TITLE'][$lang['id_lang']] = Configuration::get('DBBLOG_TITLE', $lang['id_lang']);
-            $values['DBBLOG_HOME_SHORT_DESC'][$lang['id_lang']] = Configuration::get('DBBLOG_HOME_SHORT_DESC', $lang['id_lang']);
-            $values['DBBLOG_HOME_LARGE_DESC'][$lang['id_lang']] = Configuration::get('DBBLOG_HOME_LARGE_DESC', $lang['id_lang']);
-            $values['DBBLOG_SLUG'][$lang['id_lang']] = Configuration::get('DBBLOG_SLUG', $lang['id_lang']);
-            $values['DBBLOG_META_TITLE'][$lang['id_lang']] = Configuration::get('DBBLOG_META_TITLE', $lang['id_lang']);
-            $values['DBBLOG_META_DESCRIPTION'][$lang['id_lang']] = Configuration::get('DBBLOG_META_DESCRIPTION', $lang['id_lang']);
-            $values['DBBLOG_RGPD'][$lang['id_lang']] = Configuration::get('DBBLOG_RGPD', $lang['id_lang']);
-        }
-
-        $values['DBBLOG_COLOR'] = Configuration::get('DBBLOG_COLOR');
-        $values['DBBLOG_POSTS_PER_PAGE'] = Configuration::get('DBBLOG_POSTS_PER_PAGE');
-        $values['DBBLOG_POSTS_PER_HOME'] = Configuration::get('DBBLOG_POSTS_PER_HOME');
-        $values['DBBLOG_POSTS_PER_AUTHOR'] = Configuration::get('DBBLOG_POSTS_PER_AUTHOR');
-        $values['DBBLOG_SIDEBAR_VIEWS'] = Configuration::get('DBBLOG_SIDEBAR_VIEWS');
-        $values['DBBLOG_SIDEBAR_LAST'] = Configuration::get('DBBLOG_SIDEBAR_LAST');
-        $values['DBBLOG_SIDEBAR_AUTHOR'] = Configuration::get('DBBLOG_SIDEBAR_AUTHOR');
-        $values['DBBLOG_COMMENTS'] = Configuration::get('DBBLOG_COMMENTS');
-        $values['DBBLOG_PRIVACITY'] = Configuration::get('DBBLOG_PRIVACITY');
-        $values['DBBLOG_RECAPTCHA_ENABLE'] = Configuration::get('DBBLOG_RECAPTCHA_ENABLE');
-        $values['DBBLOG_RECAPTCHA'] = Configuration::get('DBBLOG_RECAPTCHA');
-        $values['DBBLOG_RECAPTCHA_PRIVATE'] = Configuration::get('DBBLOG_RECAPTCHA_PRIVATE');
-        $values['DBBLOG_POST_RELATED'] = Configuration::get('DBBLOG_POST_RELATED');
-        $values['DBBLOG_POST_EXTRACT'] = Configuration::get('DBBLOG_POST_EXTRACT');
-        $values['DBBLOG_POST_READMORE'] = Configuration::get('DBBLOG_POST_READMORE');
-        $values['DBBLOG_POST_AUTHOR'] = Configuration::get('DBBLOG_POST_AUTHOR');
-        $values['DBBLOG_POST_FEATURED_HOMEPS'] = Configuration::get('DBBLOG_POST_FEATURED_HOMEPS');
-        $values['DBBLOG_POST_VIEWS_HOMEPS'] = Configuration::get('DBBLOG_POST_VIEWS_HOMEPS');
-        $values['DBBLOG_POST_VIEWS_SIDEBARPS'] = Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
-        $values['DBBLOG_POST_LAST_SIDEBARPS'] = Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
-
-        return $values;
-    }
-
-    /**
-     * Save form data.
-     */
-    protected function postProcess()
-    {
-        $form_values = $this->getConfigFormValues();
-        $languages = Language::getLanguages(false);
-        $id_shop_group = (int)Context::getContext()->shop->id_shop_group;
-        $id_shop = (int)Context::getContext()->shop->id;
-
-        foreach ($form_values as $name => $key) {
-            if(is_array($key)){
-                $values = array();
-                foreach ($languages as $lang){
-                    $values[$lang['id_lang']] = Tools::getValue($name . '_'.(int)$lang['id_lang']);
-                }
-                Configuration::updateValue($name, $values, true, $id_shop_group, $id_shop);
-            } else {
-                Configuration::updateValue($name, Tools::getValue($name), true, $id_shop_group, $id_shop);
-            }
-        }
-    }
-    
-
-    /**
     * Add the CSS & JavaScript files you want to be loaded in the BO.
     */
-    public function hookBackOfficeHeader()
+    public function hookDisplayBackOfficeHeader()
     {
+        if (Tools::getValue('controller') == 'AdminDbBlogSetting'){
+            $this->context->controller->addJquery();
+            $this->context->controller->addJS($this->_path . '/views/js/back.js');
+            $this->context->controller->addCSS($this->_path . '/views/css/back.css');
+        }
         Media::addJsDef(array(
             'PS_ALLOW_ACCENTED_CHARS_URL' => (int)Configuration::get('PS_ALLOW_ACCENTED_CHARS_URL'),
             'ps_force_friendly_product' => (int)Configuration::get('PS_FORCE_FRIENDLY_PRODUCT'),
@@ -650,50 +326,48 @@ class Dbblog extends Module
     /**
      * Add the CSS & JavaScript files you want to be added on the FO.
      */
-    public function hookHeader()
+    public function hookDisplayHeader()
     {
-        $id_lang = Context::getContext()->language->id;
+        // Colores configurables
+        $inline = "<style>
+                    :root {
+                        --dbblog-texto1: ".Configuration::get('DBBLOG_COLOR_TEXT').";
+                        --dbblog-primary: ".Configuration::get('DBBLOG_COLOR').";
+                        --dbblog-background: ".Configuration::get('DBBLOG_COLOR_BACKGROUND').";
+                    }
+                </style>";
+        if(Tools::getValue('fc') == 'module' && Tools::getValue('module') == 'dbblog') {
+            return $inline;
+        }
 
-        // SplideJS Carousel
-        $this->context->controller->addCSS($this->_path . 'views/css/splide/splide.min.css');
-        $this->context->controller->addCSS($this->_path . 'views/css/splide/themes/splide-default.min.css');
-        $this->context->controller->addJS($this->_path . 'views/js/splide.min.js');
+        // Css hooks adicionales
+        if($this->premium == 1) {
+            $controller = Context::getContext()->controller->php_self;
+            if ($controller == 'index') {
+                $featured_home = (int)Configuration::get('DBBLOG_POST_FEATURED_HOMEPS');
+                $views_home = (int)Configuration::get('DBBLOG_POST_VIEWS_HOMEPS');
+                if($featured_home > 0 || $views_home > 0) {
+                    $this->context->controller->addCSS(array(
+                        $this->getLocalPath() . 'views/css/dbblog.css',
+                    ));
+                }
+            } elseif($controller == 'category' || $controller == 'manufacturer') {
+                $featured_home = (int)Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
+                $views_home = (int)Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
+                if($featured_home > 0 || $views_home > 0) {
+                    $this->context->controller->addCSS(array(
+                        $this->getLocalPath() . 'views/css/dbblog.css',
+                    ));
+                }
+            }
 
-        $this->context->controller->addJS($this->_path.'/views/js/dbblog.js');
-        $this->context->controller->addCSS($this->_path.'/views/css/dbblog.css');
-        $this->context->smarty->registerPlugin("modifier",'base64_encode', 'base64_encode');
-        Media::addJsDef(array(
-            'dbblog_ajax' => Context::getContext()->link->getModuleLink('dbblog', 'ajax', array()),
-        ));
-
-        $color = Configuration::get('DBBLOG_COLOR');
-        $inline = '<style>
-            .db__taxonomy a:hover {
-                color: '.$color.';
+            if(Tools::getValue('fc') == 'module' && Tools::getValue('module') == 'dbaboutus') {
+                $this->context->controller->addCSS(array(
+                    $this->getLocalPath() . 'views/css/dbblog.css',
+                ));
+                return $inline;
             }
-            #module-dbblog-dbcategory .header__category,
-            #module-dbblog-dbpost .header__category,
-            #module-dbblog-dbhome .header__category {
-                background: '.$color.';
-            }
-            .btn_db_inifinitescroll,
-            .btn_db_inifinitescroll_author {
-                background: '.$color.';
-            }
-            .bck_title {
-                background: '.$color.';
-            }
-            .info_post .info_up .info_author a:hover {
-                color: '.$color.';
-            }
-            .form_comment_post .send_comment {
-                background: '.$color.';
-            }
-            .header__author {
-                background: '.$color.';
-            }
-        </style>';
-        return $inline;
+        }
     }
     
     /**
@@ -705,6 +379,7 @@ class Dbblog extends Module
         $context = Context::getContext();
         $controller = Tools::getValue('controller', 0);
         $id_lang = $context->language->id;
+        $id_shop = $context->shop->id;
         $blog_slug = Configuration::get('DBBLOG_SLUG', $id_lang);
 
         $my_routes = array(
@@ -762,7 +437,6 @@ class Dbblog extends Module
     public function hookdisplayLeftColumn($params)
     {
         if($this->premium == 1) {
-
             $num_views = Configuration::get('DBBLOG_POST_VIEWS_SIDEBARPS');
             $num_last = Configuration::get('DBBLOG_POST_LAST_SIDEBARPS');
             $data = DbBlogPremium::hookdisplayLeftColumn($params);
@@ -774,7 +448,7 @@ class Dbblog extends Module
                     'more_views' => $more_views,
                     'last_posts' => $last_posts,
                 ));
-                return $this->display(__FILE__, 'premium/sidebar.tpl');
+                return $this->fetch('module:dbblog/views/templates/hook/sidebar.tpl');
             }
         }
     }
@@ -795,8 +469,9 @@ class Dbblog extends Module
                     'last_posts' => $last_posts,
                     'limit_views' => $limit_views_home,
                     'limit_last' => $limit_last_home,
+                    'path_img_posts' => _MODULE_DIR_.'dbblog/views/img/post/',
                 ));
-                return $this->display(__FILE__, 'premium/homeps.tpl');
+                return $this->fetch('module:dbblog/views/templates/hook/homeps.tpl');
             }
         }
     }
@@ -805,6 +480,7 @@ class Dbblog extends Module
     {
         $this->smarty->assign(array(
             'list_post' => $posts,
+            'path_img_posts' => _MODULE_DIR_.'dbblog/views/img/post/',
         ));
 
         return $this->fetch('module:dbblog/views/templates/front/_partials/infinite_scroll.tpl');
@@ -819,11 +495,24 @@ class Dbblog extends Module
             $customer_name = $this->context->customer->firstname.' '.$this->context->customer->lastname;
         }
 
+        $link = new Link();
+        $id_lang = $this->context->language->id;
+        $rgpd_text = Configuration::get('DBBLOG_RGPD', $id_lang);
+        $link_privacity = $link->getCMSLink(Configuration::get('DBBLOG_PRIVACITY'));
+        $recaptcha_enable = Configuration::get('DBBLOG_RECAPTCHA_ENABLE');
+        $recaptcha = Configuration::get('DBBLOG_RECAPTCHA');
+        $recaptcha_private = Configuration::get('DBBLOG_RECAPTCHA_PRIVATE');
+
         $this->smarty->assign(array(
             'id_comment' => $id_comment,
             'customer_name' => $customer_name,
             'customer_login' => $customer_login,
             'id_post' => $id_post,
+            'recaptcha_enable' => $recaptcha_enable,
+            'link_privacity' => $link_privacity,
+            'rgpd_text' => $rgpd_text,
+            'recaptcha' => $recaptcha,
+            'recaptcha_private' => $recaptcha_private,
         ));
 
         return $this->fetch('module:dbblog/views/templates/front/_partials/form_comment.tpl');
@@ -909,25 +598,121 @@ class Dbblog extends Module
         }
     }
 
-    public function getProductsSeller($id_category, $way = null, $num = null)
+    public function getProductsSeller($id_category, $way = null, $num = null, $id_lang)
     {
         if($way == null){ $way = DESC; }
-        $sql = "SELECT sp.id_product 
-                    FROM "._DB_PREFIX_."specific_price sp
-                    LEFT JOIN "._DB_PREFIX_."category_product pp
-                        ON sp.id_product = pp.id_product
-                    LEFT JOIN "._DB_PREFIX_."stock_available sa
-                        ON sp.id_product = sa.id_product
-                    LEFT JOIN "._DB_PREFIX_."product p
-                        ON pp.id_product = p.id_product
-                    WHERE pp.id_category = '$id_category' AND p.active = 1 AND sa.id_product_attribute = 0
-                    GROUP BY p.id_product
-                    HAVING SUM(sa.quantity) > 0
-                    ORDER BY sp.reduction ".$way."
-                    LIMIT ".$num;
-        $products = Db::getInstance()->ExecuteS($sql);
+        $sql = 'SELECT p.id_product, 
+                    SUM(od.product_quantity) as sellers
+				FROM `' . _DB_PREFIX_ . 'category_product` cp
+				LEFT JOIN `' . _DB_PREFIX_ . 'product` p
+					ON p.`id_product` = cp.`id_product`
+				' . Shop::addSqlAssociation('product', 'p')
+            . Product::sqlStock('p', 0) . '
+				LEFT JOIN `' . _DB_PREFIX_ . 'order_detail` od
+				    ON p.`id_product` = od.`product_id`
+				WHERE product_shop.`id_shop` = ' . (int) $this->context->shop->id
+            . (' AND product_shop.`active` = 1')
+            . ' AND product_shop.`visibility` IN ("both", "catalog")
+                    AND (stock.out_of_stock = 1 OR stock.quantity > 0)';
+        if($id_category > 0){
+            $categories = implode(',', $this->getAllChildrens([], $id_category, $id_lang));
+            $sql .= ' AND cp.id_category IN ('.$categories.')';
+        }
+        $sql .= ' GROUP BY p.id_product
+                ORDER BY sellers '.$way.'
+                LIMIT '.$num;
+
+        $products = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql, true, true);
 
         return $products;
+    }
+
+    public function checkWebp() {
+        if($this->premium == 0) {
+            return false;
+        }
+
+        $gd_extensions = get_extension_funcs("gd");
+        if (in_array("imagewebp", $gd_extensions)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public static function getNewImg($img) {
+
+        // Cuando no hay imagen guardada en base de datos, le damos la default
+        if(empty($img)) {
+            $image = [];
+            $image['webp_small'] = 0;
+            $image['webp_big'] = 0;
+            $image['small'] = 'sin-imagen-small.jpg';
+            $image['big'] = 'sin-imagen-big.jpg';
+            return $image;
+        }
+
+        $dir_img = dirname(__FILE__).'/views/img/post/';
+        $type = Tools::strtolower(Tools::substr(strrchr($img, '.'), 1));
+        $extensions = array('.jpg', '.gif', '.jpeg', '.png', '.webp');
+        $name_without_extension = str_replace($extensions, '', $img);
+        $img_small = $name_without_extension.'-small.'.$type;
+        $img_big = $name_without_extension.'-big.'.$type;
+        $img_small_webp = $img_small.'.webp';
+        $img_big_webp = $img_big.'.webp';
+
+        $image = [];
+        $image['webp_small'] = 0;
+        $image['webp_big'] = 0;
+        // Imagen small
+        if (file_exists($dir_img.$img_small_webp)) {
+            $image['small'] = $img_small;
+            $image['webp_small'] = 1;
+        } elseif(file_exists($dir_img.$img_small)) {
+            $image['small'] = $img_small;
+        } elseif(file_exists($dir_img.$img)) {
+            $image['small'] = $img;
+        } else {
+            $image['small'] = 'sin-imagen-small.jpg';
+        }
+        // Imagen big
+        if (file_exists($dir_img.$img_big_webp)) {
+            $image['big'] = $img_big;
+            $image['webp_big'] = 1;
+        } elseif(file_exists($dir_img.$img_big)) {
+            $image['big'] = $img_big;
+        } elseif(file_exists($dir_img.$img)) {
+            $image['big'] = $img;
+        } else {
+            $image['big'] = 'sin-imagen-big.jpg';
+        }
+
+        return $image;
+    }
+
+    public function generateBreadcrumbJsonld($breadcrumb)
+    {
+        $itemListElement = [];
+        $position = 1;
+        foreach($breadcrumb['links'] as $bc) {
+            (object)$bread = new stdClass();
+            $bread->{'@type'} = 'ListItem';
+            $bread->position = $position;
+            $bread->name = $bc['title'];
+            $bread->item = $bc['url'];
+            $itemListElement[] = $bread;
+            $position++;
+        }
+
+        (object)$json = new stdClass();
+        $json->{'@context'} = 'https://schema.org';
+        $json->{'@type'} = 'BreadcrumbList';
+        $json->itemListElement = $itemListElement;
+
+        $json_ld = json_encode($json, JSON_UNESCAPED_UNICODE);
+        $script_json = '<script type="application/ld+json">'.$json_ld.'</script>';
+
+        return $script_json;
     }
 
 }

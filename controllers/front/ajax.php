@@ -35,7 +35,7 @@ class dbblogAjaxModuleFrontController extends ModuleFrontController
                 $recaptcha = Tools::getValue('recaptcha');
                 $response = json_decode(file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret=".$recaptcha_private."&response=".$recaptcha."&remoteip=".$_SERVER['REMOTE_ADDR']), true);
                 if ($response['success'] == false) {
-                    die(Tools::jsonEncode(array('result' => 'reCAPTCHA')));
+                    die(json_encode(array('result' => 'reCAPTCHA')));
                 }
             }
 
@@ -55,7 +55,7 @@ class dbblogAjaxModuleFrontController extends ModuleFrontController
                     $result = 'OK';
                 }
 
-                die(Tools::jsonEncode(array('result' => $result)));
+                die(json_encode(array('result' => $result)));
             }
 
         }
@@ -65,23 +65,27 @@ class dbblogAjaxModuleFrontController extends ModuleFrontController
             // Scroll Infinito
             $id_lang = Context::getContext()->language->id;
             $page = (int)Tools::getValue('page');
-            $id_category = Tools::getValue('id_category');
+            $id_category = (int)Tools::getValue('id_category');
 
             if($page > 0){
 
                 $id_lang = Context::getContext()->language->id;
-                $posts = DbBlogCategory::getPostsById($id_category, $id_lang, $page);
+                if($id_category > 0) {
+                    $posts = DbBlogCategory::getPostsById($id_category, $id_lang, $page);
+                } else {
+                    $posts = DbBlogPost::getPostHome($id_lang, $page);
+                }
+
                 $list_post = $this->module->renderScroll($posts);
                 
                 $result = 'OK';
-                die(Tools::jsonEncode(array(
+                die(json_encode(array(
                     'result' => $result,
                     'list_post' => $list_post,
                     'sum' => (int)count($posts),
                 )));
             }
         }
-
             
         if($action == 'infinite_scroll_author'){
 
@@ -97,7 +101,7 @@ class dbblogAjaxModuleFrontController extends ModuleFrontController
                 $list_post = $this->module->renderScroll($posts);
                 
                 $result = 'OK';
-                die(Tools::jsonEncode(array(
+                die(json_encode(array(
                     'result' => $result,
                     'list_post' => $list_post,
                     'sum' => (int)count($posts),
@@ -118,14 +122,14 @@ class dbblogAjaxModuleFrontController extends ModuleFrontController
                 $form = $this->module->renderFormRespond($id_comment, $id_post);
                 
                 $result = 'OK';
-                die(Tools::jsonEncode(array(
+                die(json_encode(array(
                     'result' => $result,
                     'form' => $form,
                 )));
 
             }
         }
-        die(Tools::jsonEncode(array('result' => $result)));
+        die(json_encode(array('result' => $result)));
     }
  
 }

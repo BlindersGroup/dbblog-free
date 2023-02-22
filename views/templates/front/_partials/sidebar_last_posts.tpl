@@ -23,15 +23,20 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<div class="header_blog">
-    <div class="container">
-        <div class="dbblog_header">
-            {if $isHome == 0}
-                <a class="dbblog_title" href="{$url_home}">{$title_blog}</a>
-            {else}
-                <h1 class="dbblog_title">{$title_blog}</h1>
-            {/if}
-            {include file='module:dbblog/views/templates/front/_partials/menu.tpl'}
-        </div>
+{if $last_posts}
+    <div class="db_last_posts_sidebar --card">
+        <span class="title_sidebar">{l s='Últimos artículos' mod='dbblog'}</span>
+        <ul class="post_list_sidebar">
+            {$number = 1}
+            {foreach from=$last_posts item=post}
+                <li>
+                    <span class="number_sidebar">{$number}</span>
+                    <div class="content">
+                        <a class="name_post truncate_3" href="{$post.url}" title="{$post.title}">{$post.title}</a>
+                    </div>
+                </li>
+                {$number = $number+1}
+            {/foreach}
+        </ul>
     </div>
-</div>
+{/if}

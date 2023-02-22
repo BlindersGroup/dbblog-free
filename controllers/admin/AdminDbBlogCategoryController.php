@@ -36,7 +36,7 @@ class AdminDbBlogCategoryController extends ModuleAdminController
         $this->table = 'dbblog_category';
         $this->className = 'DbBlogCategory';
         $this->lang = true;
-        $this->multishop_context = Shop::CONTEXT_ALL;
+        //$this->multishop_context = Shop::CONTEXT_ALL;
         $this->position_identifier = 'position';
         $this->_where = 'AND a.`id_parent` = 0';
         $this->_orderWay = $this->_defaultOrderWay;
@@ -277,7 +277,45 @@ class AdminDbBlogCategoryController extends ModuleAdminController
             'title' => $this->trans('Save', array(), 'Admin.Actions'),
         );
 
+        $this->fields_form['buttons'] = array(
+            'save-and-stay' => array(
+                'title' => $this->trans('Guardar y permanecer', array(), 'Admin.Actions'),
+                'name' => 'submitAdd'.$this->table.'AndStay',
+                'type' => 'submit',
+                'class' => 'btn btn-default pull-right',
+                'icon' => 'process-icon-save'
+            )
+        );
+
         return parent::renderForm();
+    }
+
+    public function processDelete()
+    {
+        // Comprobamos antes de borrar si hay subcategorias y posts asociados
+        $obj = $this->loadObject();
+        $id_dbblog_category = $obj->id_dbblog_category;
+        $sql = "SELECT count(*) as total
+            FROM "._DB_PREFIX_."dbblog_category 
+            WHERE id_parent = '$id_dbblog_category'";
+        $subcats = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        if((int)$subcats > 0){
+            $this->errors[] = $this->l('Tienes subcategorías asociadas a esta categoría, primero tienes que borrar las subcategorías');
+        }
+        $sql = "SELECT count(*) as total
+            FROM "._DB_PREFIX_."dbblog_post 
+            WHERE id_dbblog_category = '$id_dbblog_category'";
+        $posts = Db::getInstance(_PS_USE_SQL_SLAVE_)->getValue($sql);
+        if((int)$posts > 0){
+            $this->errors[] = $this->l('Tienes posts asociadas a esta categoría como principal, primero tienes que cambiar la asociación de los posts a otra categoría principal');
+        }
+        if(count($this->errors) > 0){
+            return;
+        }
+
+        // Borramos si la comprobacion es correcta
+        $object = parent::processDelete();
+        return $object;
     }
 
     public function ajaxProcessUpdatePositions()

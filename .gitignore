@@ -1,0 +1,11 @@
+/views/img/post/fileType
+/views/img/post/*.jpg
+/views/img/post/*.JPG
+/views/img/post/*.jpeg
+/views/img/post/*.png
+/views/img/post/*.webp
+/views/img/post/*.gif
+!/views/img/post/sin-imagen-big.jpg
+!/views/img/post/sin-imagen-small.jpg
+!/views/img/post/index.php
+/dependencies/*

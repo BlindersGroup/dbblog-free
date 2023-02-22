@@ -24,57 +24,125 @@
 *}
 {extends file='page.tpl'}
 
-{block name='hook_extra'}
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-            {foreach from=$breadcrumb.links item=path name=breadcrumb}
-            {
-                "@type": "ListItem",
-                "position": {$smarty.foreach.breadcrumb.iteration},
-                "name": "{$path.title}",
-                "item": "{$path.url}"
-            }{if not $smarty.foreach.breadcrumb.last},{/if}
-            {/foreach}
-        ]
-    }
-    </script>
+{block name='head_microdata'}
 {/block}
 
-{include file='module:dbblog/views/templates/front/_partials/header.tpl'}
-{include file='module:dbblog/views/templates/front/_partials/breadcrumb.tpl'}
+{block name='hook_extra'}
+    {$json_ld nofilter}
+{/block}
+
+{block name="notifications" append}
+    {include file='module:dbblog/views/templates/front/_partials/header.tpl'}
+{/block}
 
 {block name="content_wrapper"}
 
-    <div class="row">
-        <div id="content-wrapper" class="home_blog_center center-column col-sm-4 col-md-9">
+    <div id="content-wrapper" class="content-only">
 
-            {if $short_desc|count_characters > 1}
-            <div class="db__short-desc --card-blog">
-                <p>{$short_desc nofilter}</p>
-            </div>
-            {/if}
-
-            <div class="dbblog_recent">
-                <h2 class="title">{l s='Últimos posts' mod='dbblog'}</h2>
-                <div class="db__posts posts_theme2">
-                    {foreach from=$last_posts_home item=post}
-                        {include file='module:dbblog/views/templates/front/_partials/post_mini.tpl'}
+        <div class="dbblog_content_top">
+            {if $destacados|count > 0}
+                <div class="home_destacado_principal">
+                    {foreach from=$destacados item=post name=dest}
+                        {if $smarty.foreach.dest.first}
+                            {include file='module:dbblog/views/templates/front/_partials/post_mini.tpl' large='xl'}
+                        {/if}
                     {/foreach}
                 </div>
-            </div>
-
-            {if $large_desc|count_characters > 1}
-            <div class="db__large-desc --card-blog">
-                <p>{$large_desc nofilter}</p>
-            </div>
             {/if}
 
+            {if $destacados|count > 1}
+                <div id="splide_dbblog_destacados" class="home_destacados splide">
+                    <div class="splide__track">
+                        <div class="splide__list">
+                            {foreach from=$destacados item=post name=dest}
+                                {if !$smarty.foreach.dest.first}
+                                    <div class="splide__slide">
+                                        {include file='module:dbblog/views/templates/front/_partials/post_mini.tpl' large='m'}
+                                    </div>
+                                {/if}
+                            {/foreach}
+                        </div>
+                    </div>
+                </div>
+
+                <script>
+                    document.addEventListener( 'DOMContentLoaded', function () {
+                        new Splide( '#splide_dbblog_destacados', {
+                            perPage     : 4,
+                            pagination: false,
+                            lazyLoad: 'sequential',
+                            arrows: true,
+                            gap: '16px',
+                            breakpoints: {
+                                575: {
+                                    perPage: 1,
+                                    padding: {
+                                        right: '30%',
+                                    },
+                                    arrows: false,
+                                },
+                                767: {
+                                    perPage: 2,
+                                    padding: {
+                                        right: '15%',
+                                    },
+                                    arrows: false,
+                                },
+                                992: {
+                                    perPage: 2,
+                                    padding: {
+                                        right: '10%',
+                                    },
+                                    arrows: false,
+                                },
+                                1200: {
+                                    perPage: 3,
+                                }
+                            },
+                        } ).mount();
+                    } );
+                </script>
+            {/if}
+
+
+            {if $short_desc|count_characters > 1}
+                <div class="db__short-desc --card">
+                    {$short_desc nofilter}
+                </div>
+            {/if}
         </div>
 
-{/block}
+        <div class="dbblog_content_columns">
+            <div class="content_left">
+                {if $last_posts_home}
+                    <div class="dbblog_grid">
+                        <p class="title_list">{l s='Últimos posts' mod='dbblog'}</p>
+                        <div class="dbblog_list">
+                            {foreach from=$last_posts_home item=post}
+                                {include file='module:dbblog/views/templates/front/_partials/post_mini.tpl' large='l'}
+                            {/foreach}
+                        </div>
+                    </div>
 
-        {include file='module:dbblog/views/templates/front/_partials/sidebar.tpl'}
+                    {include file='module:dbblog/views/templates/front/_partials/pagination.tpl'}
+                {/if}
+            </div>
+
+            <div class="content_right">
+                {include file='module:dbblog/views/templates/front/_partials/sidebar_more_views.tpl'}
+                {include file='module:dbblog/views/templates/front/_partials/sidebar_rrss.tpl'}
+                {include file='module:dbblog/views/templates/front/_partials/sidebar_authors.tpl'}
+            </div>
+        </div>
+
+        <div class="dbblog_content_bottom">
+            {if $large_desc|count_characters > 1}
+                <div class="db__large-desc --card">
+                    {$large_desc nofilter}
+                </div>
+            {/if}
+        </div>
+
     </div>
+
+{/block}

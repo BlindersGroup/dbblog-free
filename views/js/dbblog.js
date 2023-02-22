@@ -26,9 +26,9 @@
 * to avoid any conflicts with others containers.
 */
 
-$(document).on("click", ".datatext", function(e) {
+/*$(document).on("click", ".datatext", function(e) {
     window.location.href = b64_to_utf8($(this).attr("datatext"));
-});
+});*/
 
 function b64_to_utf8(str) {
     return decodeURIComponent(escape(window.atob(str)));
@@ -38,9 +38,8 @@ $( document ).ready(function() {
 
     // Activar boton comentarios
     $(document).on('click', '.politica_privacidad', function(){
-        var checked = $("input[name=politica_privacidad]:checked", $(this).parents("form")).length;
         var nombre = $('input[name=nombre]', $(this).parents("form")).length;
-        if(checked > 0 && nombre > 0){
+        if( $('#politica_privacidad').prop('checked')) {
             $(".send_comment", $(this).parents("form")).removeAttr("disabled");
         } else {
             $(".send_comment", $(this).parents("form")).attr( "disabled", "disabled" );
@@ -55,6 +54,16 @@ $( document ).ready(function() {
         var comentario = $('textarea[name=comentario]', $(this).parents("form")).val();
         var rating = $('input[name=rating]:checked', $(this).parents("form")).val();
         // var url_comment = $('.form_comment_post').attr('action');
+
+        if(nombre.length == 0){
+            alert('Debes rellenar el nombre');
+            return;
+        }
+
+        if(comentario.length == 0){
+            alert('Debes rellenar el comentario');
+            return;
+        }
 
         var checked = $("input[name=politica_privacidad]:checked", $(this).parents("form")).length;
         if(checked == 0){
@@ -95,7 +104,6 @@ $( document ).ready(function() {
     $(document).on('click', '.btn_db_inifinitescroll', function(){
         var page = document.getElementById('btn_db_inifinitescroll').dataset.pag;
         var id_category = $('.btn_db_inifinitescroll').data('category');
-        console.log(page);
 
         requestData = {
             page: page,
@@ -123,10 +131,10 @@ $( document ).ready(function() {
                     // Calculamos el porcentaje de progreso
                     total_posts = $('.total_posts').data('total');
                     porcent = (sum_infinite * 100 / total_posts).toFixed(2);
-                    $('.progress-bar').css('width', porcent+'%');
+                    $('.dbblog_infinitescroll .progress-bar').css('width', porcent+'%');
 
                     // Pintamos los posts llamados por ajax
-                    $('.post__grid').append(response.list_post);
+                    $('.dbblog_list').append(response.list_post);
 
                     // Oculatmos el boton si ya no hay mas posts
                     if(total_posts <= sum_infinite){
@@ -227,5 +235,80 @@ $( document ).ready(function() {
         $('.menu .menub__overlay').css('opacity', '0');
         $('.menu .menub__overlay').css('visibility', 'hidden');
         $('body').css('overflow', 'auto');
+    });
+
+});
+
+// Menu nuevo
+$(document).ready(function() {
+    var BlogdondeEstoy = ["BlogMenuPrincipal"];
+    var BlogmenuPrincipalTitulo = "#dbblog_menu .modal-body .menu_header";
+    var BlogmenuPrincipalCuerpo = "#dbblog_menu .modal-body .dbblog_primary";
+    var BlogcategoriasSelTxt = "#dbblog_menu .modal-body .";
+    var BlogcategoriasBack = "#dbblog_menu .modal-body .dbblog_back";
+
+    /* Sobre las categorias padres del menú */
+    var BlogMenuPrincipal = function(accion){
+        if (accion == "mostrar"){
+            /* Mostramos el menú Principal */
+            $(BlogmenuPrincipalTitulo).show('400');
+            $(BlogmenuPrincipalCuerpo).show('400');
+        } else if (accion =="ocultar") {
+            $(BlogmenuPrincipalTitulo).hide('400');
+            $(BlogmenuPrincipalCuerpo).hide('400');
+        }
+    }
+
+    var BlogMenuHijoOcultar = function(selector) {
+        $(selector).css("height", "0px");
+        $(selector).css("overflow-y", "hidden");
+    };
+
+    var BlogMenuHijoMostrar = function(selector) {
+        $(selector).css("height", "100vh");
+        $(selector).css("overflow-y", "scroll");
+    };
+
+    var BlogMenusHijos = function(accion, esteObjeto){
+        claseOcultar = BlogdondeEstoy[BlogdondeEstoy.length - 1];
+        if (accion == "irAtras") {
+            // Mostramos el padre o el menu principal si procede
+            selectorOcultar = BlogcategoriasSelTxt + claseOcultar;
+            BlogMenuHijoOcultar(selectorOcultar);
+            if ( BlogdondeEstoy.length == 2){
+                // Si el padre es el menu principal
+                BlogMenuPrincipal("mostrar");
+            } else {
+                // el padre es otro hijo, por lo que lo abrimos
+                claseMostrar = BlogdondeEstoy[BlogdondeEstoy.length - 2];
+                selectorMostrar = BlogcategoriasSelTxt + claseMostrar;
+                BlogMenuHijoMostrar(selectorMostrar);
+            }
+            BlogdondeEstoy.pop();
+        } else if (accion == "irAHijo") {
+            // Mostramos el menu hijo de este
+            var BlogcategoriaMostrar = $(esteObjeto).attr('data-subitem');
+            selectorMostrar = BlogcategoriasSelTxt + BlogcategoriaMostrar;
+            selectorOcultar = BlogcategoriasSelTxt + claseOcultar;
+
+            if ( BlogdondeEstoy.length == 1){
+                BlogMenuPrincipal("ocultar");
+            } else {
+                BlogMenuHijoOcultar(selectorOcultar);
+            }
+            BlogMenuHijoMostrar(selectorMostrar);
+            BlogdondeEstoy.push(BlogcategoriaMostrar);
+        }
+    };
+
+    $("#dbblog_menu .modal-body .open_subitems").click(function() {
+        /* Vamos a una categoría hija */
+        BlogMenusHijos("irAHijo", this);
+        return false;
+    });
+    $(BlogcategoriasBack).click(function(){
+        /* Vamos a la Categoría Padre */
+        BlogMenusHijos("irAtras", this);
+        return false;
     });
 });

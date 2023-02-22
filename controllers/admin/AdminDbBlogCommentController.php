@@ -34,7 +34,7 @@ class AdminDbBlogCommentController extends ModuleAdminController
         $this->table = 'dbblog_comment';
         $this->className = 'DbBlogComment';
         $this->lang = false;
-        $this->multishop_context = Shop::CONTEXT_ALL;
+        //$this->multishop_context = Shop::CONTEXT_ALL;
 
         parent::__construct();
 
@@ -47,6 +47,9 @@ class AdminDbBlogCommentController extends ModuleAdminController
             'id_post' => array(
                 'title' => $this->trans('ID Post', array(), 'Admin.Global'),
             ),
+            'name_post' => array(
+                'title' => $this->trans('Post', array(), 'Admin.Global'),
+            ),
             'name' => array(
                 'title' => $this->trans('Nombre', array(), 'Admin.Global'),
             ),
@@ -54,9 +57,9 @@ class AdminDbBlogCommentController extends ModuleAdminController
                 'title' => $this->trans('Comentario', array(), 'Admin.Global'),
                 'width' => 500,
             ),
-            'rating' => array(
+            /*'rating' => array(
                 'title' => $this->trans('Puntuación', array(), 'Admin.Global'),
-            ),
+            ),*/
             'approved' => array(
                 'title' => 'Aprobado',
                 'active' => 'approved',
@@ -95,8 +98,12 @@ class AdminDbBlogCommentController extends ModuleAdminController
         // removes links on rows
         $this->list_no_link = true;
 
+        $this->_select = 'pl.title as name_post';
+        $this->_join = "INNER JOIN "._DB_PREFIX_."dbblog_post_lang pl ON a.id_post = pl.id_dbblog_post AND pl.id_lang = ".(int)Context::getContext()->language->id;
+
         // adds actions on rows
         $this->addRowAction('edit');
+        $this->addRowAction('respond');
         $this->addRowAction('delete');
         
         return parent::renderList();
@@ -147,19 +154,19 @@ class AdminDbBlogCommentController extends ModuleAdminController
 
                 array(
                     'type' => 'switch',
-                    'label' => $this->l('Aprobado', array(), 'Admin.Global'),
+                    'label' => $this->l('Aprobado'),
                     'name' => 'approved',
                     'is_bool' => true,
                     'values' => array(
                         array(
                             'id' => 'active_on',
                             'value' => 1,
-                            'label' => $this->l('Yes', array(), 'Admin.Global')
+                            'label' => $this->l('Yes')
                         ),
                         array(
                             'id' => 'active_off',
                             'value' => 0,
-                            'label' => $this->l('No', array(), 'Admin.Global')
+                            'label' => $this->l('No')
                         )
                     ),
                 ),
@@ -173,6 +180,13 @@ class AdminDbBlogCommentController extends ModuleAdminController
         );
 
         return parent::renderForm();
+    }
+
+    public function displayRespondLink($token = null, $id)
+    {
+        $link = $this->context->link->getAdminLink('AdminDbBlogRespond', true, [], ['id_dbblog_comment' => $id]);
+        $button = '<a href="'.$link.'" class="edit"><i class="material-icons">question_answer</i> Responder</a>';
+        return $button;
     }
 
 }

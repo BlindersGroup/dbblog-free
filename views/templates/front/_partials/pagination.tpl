@@ -23,15 +23,14 @@
 *  International Registered Trademark & Property of PrestaShop SA
 *}
 
-<div class="header_blog">
-    <div class="container">
-        <div class="dbblog_header">
-            {if $isHome == 0}
-                <a class="dbblog_title" href="{$url_home}">{$title_blog}</a>
-            {else}
-                <h1 class="dbblog_title">{$title_blog}</h1>
-            {/if}
-            {include file='module:dbblog/views/templates/front/_partials/menu.tpl'}
-        </div>
+<div class="dbblog_infinitescroll">
+    <p class="sum_infinite">{l s='Has visto' mod='dbblog'} <span id="sum_infinite_from" class="sum_infinite_from" data-sumin="{$posts_per_page}">{$posts_per_page}</span> {l s='de' mod='dbblog'} <span class="total_posts" data-total="{$total_posts}">{$total_posts}</span> {l s='posts' mod='dbblog'}</p>
+
+    <div class="progress">
+        <div class="progress-bar" role="progressbar" style="width: {$percent_view}%" aria-valuenow="{$percent_view}" aria-valuemin="0" aria-valuemax="100"></div>
     </div>
+
+    {if $pagination == 1}
+        <div id="btn_db_inifinitescroll" class="btn btn-secondary btn_db_inifinitescroll" data-category="{if $isHome == 0}{$category.id}{else}0{/if}" data-pag="1">{l s='Cargar más' mod='dbblog'}</div>
+    {/if}
 </div>

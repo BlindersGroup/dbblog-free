@@ -1,5 +1,6 @@
-{*
-* 2007-2014 PrestaShop
+<?php
+/**
+* 2007-2021 PrestaShop
 *
 * NOTICE OF LICENSE
 *
@@ -17,21 +18,17 @@
 * versions in the future. If you wish to customize PrestaShop for your
 * needs please refer to http://www.prestashop.com for more information.
 *
-*  @author PrestaShop SA <contact@prestashop.com>
-*  @copyright  2007-2014 PrestaShop SA
-*  @license    http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
+*  @author    PrestaShop SA <contact@prestashop.com>
+*  @copyright 2007-2021 PrestaShop SA
+*  @license   http://opensource.org/licenses/afl-3.0.php  Academic Free License (AFL 3.0)
 *  International Registered Trademark & Property of PrestaShop SA
-*}
+*/
+header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
 
-<div class="header_blog">
-    <div class="container">
-        <div class="dbblog_header">
-            {if $isHome == 0}
-                <a class="dbblog_title" href="{$url_home}">{$title_blog}</a>
-            {else}
-                <h1 class="dbblog_title">{$title_blog}</h1>
-            {/if}
-            {include file='module:dbblog/views/templates/front/_partials/menu.tpl'}
-        </div>
-    </div>
-</div>
+header('Cache-Control: no-store, no-cache, must-revalidate');
+header('Cache-Control: post-check=0, pre-check=0', false);
+header('Pragma: no-cache');
+
+header('Location: ../');
+exit;

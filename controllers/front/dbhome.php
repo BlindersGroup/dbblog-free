@@ -15,6 +15,19 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
 
         parent::initContent();
 
+        // Detectamos en el caso de tener idiomas que la url tenga la url con el idioma
+        $languages = Language::getLanguages();
+        if (count($languages) > 1) {
+            $path_language = $_SERVER['REQUEST_URI'];
+            $iso_code = Language::getIsoById($this->context->language->id);
+            $route_prefix = $iso_code . '/';
+            if (strpos($path_language, $route_prefix) == false) {
+                header("HTTP/1.0 404 Not Found");
+                $this->setTemplate('errors/404.tpl');
+                return;
+            }
+        }
+
         // Cabecera
         $title_blog = Configuration::get('DBBLOG_TITLE', $id_lang);
         $categories = DbBlogCategory::getCategories($id_lang, true);
@@ -23,11 +36,26 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
         $short_desc = Configuration::get('DBBLOG_HOME_SHORT_DESC', $id_lang);
         $large_desc = Configuration::get('DBBLOG_HOME_LARGE_DESC', $id_lang);
 
+        // Listado de posts
+        $total_posts = DbBlogPost::getTotalPosts($id_lang);
+        $posts_per_home = Configuration::get('DBBLOG_POSTS_PER_HOME');
+        $pagination = 1;
+
+        if($total_posts <= $posts_per_home){
+            $pagination = 0;
+            $posts_per_home = $total_posts;
+        }
+        if($total_posts > 0) {
+            $percent_view = round($posts_per_home * 100 / $total_posts, 0);
+        } else {
+            $percent_view = 100;
+        }
+
         // Posts Destacados
         $destacados = DbBlogPost::getPostFeatures($id_lang);
         
         // Posts views
-        $post_extract = Configuration::get('DBBLOG_POST_EXTRACT');
+//        $post_extract = Configuration::get('DBBLOG_POST_EXTRACT');
         $post_readmore = Configuration::get('DBBLOG_POST_READMORE');
 
         // Authors
@@ -49,9 +77,10 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
         $more_views = DbBlogCategory::getPostsViews($id_lang, NULL, NULL, NULL, Configuration::get('DBBLOG_SIDEBAR_VIEWS'));
 
         // Ultimos Sidebar
-        $last_posts = DbBlogCategory::getPostsLast($id_lang, NULL, NULL, NULL, Configuration::get('DBBLOG_SIDEBAR_LAST'));
-
+//        $last_posts = DbBlogCategory::getPostsLast($id_lang, NULL, NULL, NULL, Configuration::get('DBBLOG_SIDEBAR_LAST'));
         $last_posts_home = DbBlogCategory::getPostsLast($id_lang, NULL, NULL, NULL, Configuration::get('DBBLOG_POSTS_PER_HOME'));
+
+        $json_ld = $this->module->generateBreadcrumbJsonld($this->getBreadcrumbLinks());
 
         $this->context->smarty->assign(array(
             'title_blog'    => $title_blog,
@@ -61,12 +90,14 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
             'isAuthors'     => 0,
             'isAuthor'      => 0,
             'isPost'        => 0,
+            'json_ld'       => $json_ld,
 
             'short_desc'    => $short_desc,
             'large_desc'    => $large_desc,
             'destacados'    => $destacados,
             'path_img_posts' => _MODULE_DIR_.'dbblog/views/img/post/',
-            'post_extract'      => $post_extract,
+            'path_img_author' => _MODULE_DIR_.'dbaboutus/views/img/author/',
+//            'post_extract'      => $post_extract,
             'post_readmore'     => $post_readmore,
 
             'authors'       => $authors,
@@ -78,8 +109,12 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
             'instagram'     => $instagram,
             'path_img'      => _MODULE_DIR_.'dbblog/views/img/',
             'more_views'    => $more_views,
-            'last_posts'    => $last_posts,
+//            'last_posts'    => $last_posts,
             'last_posts_home'    => $last_posts_home,
+            'percent_view' => $percent_view,
+            'posts_per_page' => $posts_per_home,
+            'total_posts' => $total_posts,
+            'pagination' => $pagination,
         ));
 
         $this->setTemplate('module:dbblog/views/templates/front/home.tpl');
@@ -109,10 +144,57 @@ class DbblogDbHomeModuleFrontController extends ModuleFrontController
         $meta_title = Configuration::get('DBBLOG_META_TITLE', $this->context->language->id);
         $meta_description = Configuration::get('DBBLOG_META_DESCRIPTION', $this->context->language->id);
 
-        $page['canonical'] = $url_home;
         $page['meta']['title'] = $meta_title;
         $page['meta']['description'] = $meta_description;
+        $page['meta']['robots'] = 'index,follow';
+        $page['canonical'] = $url_home;
 
         return $page;
+    }
+
+    public function setMedia()
+    {
+        parent::setMedia();
+
+        if(!Module::isEnabled('dbthemecustom')){
+            $this->context->controller->addCSS(array(
+                $this->module->getLocalPath() . 'views/css/splide/splide.min.css',
+                $this->module->getLocalPath() . 'views/css/splide/themes/splide-default.min.css',
+            ));
+            $this->context->controller->addJS(array(
+                $this->module->getLocalPath() . 'views/js/splide.min.js',
+            ));
+        }
+
+        $this->context->controller->addCSS(array(
+            $this->module->getLocalPath() . 'views/css/dbblog.css',
+        ));
+
+        $this->context->controller->addJS(array(
+            $this->module->getLocalPath() . 'views/js/dbblog.js',
+        ));
+
+        Media::addJsDef(array(
+            'dbblog_ajax' => Context::getContext()->link->getModuleLink('dbblog', 'ajax', array()),
+        ));
+    }
+
+    public function getTemplateVarUrls()
+    {
+        $urls = parent::getTemplateVarUrls();
+
+        $languages = Language::getLanguages();
+        if (count($languages) > 1) {
+            foreach ($urls['alternative_langs'] as $locale => $href_lang) {
+                $id_lang = (int)Language::getIdByLocale($locale);
+                if ($id_lang > 0) {
+                    $blog_slug = Configuration::get('DBBLOG_SLUG', $id_lang);
+                    $iso_code = Language::getIsoById($id_lang);
+                    $urls['alternative_langs'][$locale] = $urls['base_url'].$iso_code.'/'.$blog_slug.'/';
+                }
+            }
+        }
+
+        return $urls;
     }
 }
